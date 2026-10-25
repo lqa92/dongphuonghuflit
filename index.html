@@ -7,7 +7,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /* Layout: một cột, bộ lọc năm học/học kỳ dùng chung, ba tab (Tổng hợp, Nhập môn dạy, Quản trị). */
 :root {
@@ -168,6 +168,65 @@ details.dp[open] > summary { margin-bottom: 8px; }
 #status { display: flex; flex-direction: column; gap: 8px; }
 .linkbtn{font:inherit;font-size:13px;background:none;border:0;padding:0;color:var(--accent);text-decoration:underline;cursor:pointer}
 .row[data-dept="vp"] { --c: #b08a2e; }
+
+/* ===== Giao diện B: áp phích Thụy Sĩ, font Space Grotesk ===== */
+:root, :root:not([data-theme="light"]), :root[data-theme="dark"] {
+  --bg:#ffffff; --surface:#ffffff; --surface-2:#f3f3f1; --ink:#0d0d0d; --muted:#555555; --line:#0d0d0d;
+  --accent:#0d0d0d; --accent-ink:#ffffff; --hot:#ff5a2b; --hot-ink:#d93a0c;
+  --han:#0d0d0d; --nhat:#0d0d0d; --viet:#0d0d0d;
+  --ok-bg:#0d0d0d; --ok-ink:#ffffff; --soon-bg:#ffe1d6; --soon-ink:#7a1f00; --lock-bg:#e6e6e3; --lock-ink:#333;
+  --danger:#c02a00;
+  --font-body:'Space Grotesk', system-ui, sans-serif; --font-num:'Space Grotesk', system-ui, sans-serif;
+  color-scheme: light;
+}
+body { padding-top:0; font-feature-settings:"tnum"; }
+.wrap { max-width: 980px; gap: 18px; }
+.top { background:#0d0d0d; color:#fff; margin: 0 -16px; padding: 34px 32px 30px; align-items:flex-end; }
+.top h1 { font-size: clamp(44px, 9vw, 84px); line-height:.92; font-weight:700; letter-spacing:-.03em; }
+.top .sub { color:#ff5a2b; font-size:12px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; margin:0 0 14px; order:-1; }
+.top > div { display:flex; flex-direction:column; }
+.top label.f { color:#fff; letter-spacing:.1em; text-transform:uppercase; font-size:11px; }
+.top select { background:#fff; color:#0d0d0d; border:0; border-radius:0; font-weight:600; }
+select, input[type="number"], input[type="text"], input[type="date"], input[type="search"], input[type="password"], input[type="email"] { border-radius:0; border:1.5px solid #0d0d0d; }
+.status { border-radius:0; border:1.5px solid #0d0d0d; }
+.status.open { background:#ffe1d6; color:#0d0d0d; border-color:#ff5a2b; }
+.tabs { background:transparent; border:0; border-bottom:3px solid #0d0d0d; border-radius:0; padding:0; gap:26px; }
+.tab { flex:none; border-radius:0; font-size:16px; font-weight:700; padding:10px 0; min-height:0; margin-bottom:-3px; border-bottom:3px solid transparent; }
+.tab[aria-selected="true"] { background:transparent; box-shadow:none; color:#ff5a2b; border-bottom-color:#ff5a2b; }
+.panel { border:0; border-radius:0; }
+.panel-h { border-bottom:1.5px solid #0d0d0d; padding:14px 0; }
+.panel-h h2 { font-size:18px; }
+.chip { border-radius:0; border:1.5px solid #0d0d0d; color:#0d0d0d; font-weight:600; }
+.chip[aria-pressed="true"] { background:#0d0d0d; color:#fff; }
+.facts { background:transparent; padding:12px 0; border-bottom:1.5px solid #0d0d0d; color:#0d0d0d; }
+.row { border-bottom:1.5px solid #0d0d0d; }
+.row-btn { padding:14px 0; }
+.row-btn:hover { background:#f3f3f1; }
+.nm { font-size:19px; font-weight:700; }
+.dot { border-radius:0; width:10px; height:10px; background:#0d0d0d; }
+.row[data-dept="han"] .dot { background:#2d6da3; }
+.row[data-dept="nhat"] .dot { background:#c2455a; }
+.row[data-dept="viet"] .dot { background:#3b8a5a; }
+.row[data-dept="vp"] .dot { background:#b08a2e; }
+.bar { height:8px; border-radius:0; background:#ececea; box-shadow:none; }
+.fill { border-radius:0; background:#0d0d0d; }
+.tick { background:#ff5a2b; opacity:1; }
+.num { font-size:40px; font-weight:700; letter-spacing:-.03em; line-height:1; }
+.num small { font-size:12px; font-weight:500; letter-spacing:0; }
+.detail { background:#f3f3f1; border-top:1.5px solid #0d0d0d; }
+.total-row { padding:16px 0; }
+.btn { border-radius:0; background:#0d0d0d; border-color:#0d0d0d; color:#fff; text-transform:uppercase; letter-spacing:.04em; font-weight:700; }
+.btn:hover:not(:disabled) { background:#ff5a2b; border-color:#ff5a2b; color:#0d0d0d; }
+.btn.ghost { background:transparent; color:#0d0d0d; }
+.linkbtn { color:#d93a0c; }
+.hello, .note, .calc { border-radius:0; background:#f3f3f1; }
+.mine, .cat { border-radius:0; border:1.5px solid #0d0d0d; }
+.mine li, .cat li { border-bottom-color:#0d0d0d33; }
+.x { border-radius:0; border:1.5px solid #0d0d0d; }
+.guest { border-radius:0; }
+.toast { border-radius:0; }
+:focus-visible { outline:3px solid #ff5a2b; }
+@media (max-width:640px){ .top{padding:24px 16px 22px;} .num{font-size:30px;} }
 </style>
 
 <style>body{margin:0}[hidden]{display:none!important}</style>
