@@ -230,9 +230,9 @@ const db = getFirestore(app);
   var today = function () { return new Date().toLocaleDateString('en-CA'); };
 
   var DEPTS = [
-    { id: 'han', name: 'Tiếng Hàn', short: 'Hàn' },
-    { id: 'nhat', name: 'Tiếng Nhật', short: 'Nhật' },
-    { id: 'viet', name: 'Việt Nam học', short: 'Việt Nam học' }
+    { id: 'han', name: 'Bộ môn tiếng Hàn', short: 'Bộ môn tiếng Hàn' },
+    { id: 'nhat', name: 'Bộ môn tiếng Nhật', short: 'Bộ môn tiếng Nhật' },
+    { id: 'viet', name: 'Bộ môn Việt Nam học', short: 'Bộ môn Việt Nam học' }
   ];
   var deptOf = function (id) { return DEPTS.filter(function (d) { return d.id === id; })[0] || DEPTS[0]; };
 
