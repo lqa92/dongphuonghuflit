@@ -196,7 +196,7 @@ details.dp[open] > summary { margin-bottom: 8px; }
   <main id="main"></main>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
@@ -285,7 +285,7 @@ const db = getFirestore(app);
   var personOf = function (id) { return people().filter(function (p) { return p.id === id; })[0]; };
 
   var S = { year: '2026–2027', hk: 1, dept: 'all', tab: 'sum', open: {}, err: '', dbErr: '',
-    key: null, isAdmin: false, isManager: false, signedIn: false, authReady: false, teachersLoaded: false,
+    key: null, isAdmin: false, canExcel: false, isManager: false, signedIn: false, authReady: false, teachersLoaded: false,
     au: { mode: 'login', slug: '', email: '', pw: '', pw2: '', dept: 'han', guest: false, err: '', info: '', busy: false },
     d: { q: '', c: '', cr: 3, nl: 1, p: 100 } };
   var skey = function () { return S.year.replace('–', '-') + '_' + S.hk; };
@@ -371,7 +371,7 @@ const db = getFirestore(app);
     }
 
     $('#main').innerHTML =
-      '<section class="panel"><div class="panel-h"><h2>Số tiết theo giảng viên</h2>' + (S.isAdmin ? '<button class="btn small" type="button" data-act="excel">Tải Excel</button>' : '') + '<div class="chips">' + chips + '</div></div>' +
+      '<section class="panel"><div class="panel-h"><h2>Số tiết theo giảng viên</h2>' + (S.canExcel ? '<button class="btn small" type="button" data-act="excel">Tải Excel</button>' : '') + '<div class="chips">' + chips + '</div></div>' +
       '<div class="facts"><span>Đã nhập <b>' + entered.length + '/' + rows.length + '</b> giảng viên</span><span>Tổng <b>' + fmt(sum) + '</b> tiết</span><span>Trung bình <b>' + fmt(Math.round(mean)) + '</b> tiết/người</span></div>' +
       body + '</section>';
   }
@@ -553,46 +553,65 @@ const db = getFirestore(app);
   });
 
   /* ---------- Xuất Excel ---------- */
-  function exportExcel() {
-    if (!S.isAdmin) return;
-    if (typeof XLSX === 'undefined') { toast('Chưa tải được công cụ tạo Excel. Kiểm tra mạng rồi thử lại.'); return; }
-    var k = key();
-    var ppl = people().sort(function (a, b) { return a.name.localeCompare(b.name, 'vi'); });
-    function sheetFor(filter) {
-      var rows = [['STT', 'Giảng viên', 'Bộ môn', 'Thỉnh giảng', 'Môn học', 'Tín chỉ', 'Số lớp', 'Tỷ lệ giờ dạy (%)', 'Số tiết']];
-      var n = 0, gl = 0, gt = 0, merges = [];
-      ppl.filter(filter).forEach(function (p) {
-        var list = A.filter(function (a) { return a.sem === k && a.tid === p.id; }).sort(byCourse);
-        if (!list.length) return;
-        n++;
-        var groups = {}, order = [], tl = 0, tt = 0;
-        list.forEach(function (a) {
-          var g = a.c + '|' + a.cr + '|' + a.p;
-          if (!groups[g]) { groups[g] = { a: a, n: 0, t: 0 }; order.push(g); }
-          groups[g].n++; groups[g].t += tiet(a);
+  async function exportExcel() {
+    if (!S.canExcel) return;
+    if (typeof ExcelJS === 'undefined') { toast('Chưa tải được công cụ tạo Excel. Kiểm tra mạng rồi thử lại.'); return; }
+    try {
+      var k = key();
+      var ppl = people().sort(function (a, b) { return a.name.localeCompare(b.name, 'vi'); });
+      var FONT = { name: 'Times New Roman', size: 13 };
+      var wb = new ExcelJS.Workbook();
+      var heads = ['STT', 'Giảng viên', 'Bộ môn', 'Thỉnh giảng', 'Môn học', 'Tín chỉ', 'Số lớp', 'Tỷ lệ giờ dạy (%)', 'Số tiết'];
+      var widths = [6, 28, 24, 14, 48, 9, 9, 18, 11];
+      function addSheet(name, filter) {
+        var ws = wb.addWorksheet(name, { views: [{ state: 'frozen', xSplit: 0, ySplit: 1 }] });
+        ws.columns = widths.map(function (w) { return { width: w, style: { font: FONT } }; });
+        ws.addRow(heads);
+        var n = 0, gl = 0, gt = 0, merges = [];
+        ppl.filter(filter).forEach(function (p) {
+          var list = A.filter(function (a) { return a.sem === k && a.tid === p.id; }).sort(byCourse);
+          if (!list.length) return;
+          n++;
+          var groups = {}, order = [], tl = 0, tt = 0;
+          list.forEach(function (a) {
+            var g = a.c + '|' + a.cr + '|' + a.p;
+            if (!groups[g]) { groups[g] = { a: a, n: 0, t: 0 }; order.push(g); }
+            groups[g].n++; groups[g].t += tiet(a);
+          });
+          var r0 = ws.rowCount + 1;
+          order.forEach(function (g, i) {
+            var o = groups[g], c = cById(o.a.c);
+            ws.addRow([i === 0 ? n : '', i === 0 ? p.name : '', i === 0 ? (p.dept ? deptOf(p.dept).name : '') : '', p.guest ? 'Thỉnh giảng' : '', c ? c.name : '(môn đã xóa)', o.a.cr, o.n, o.a.p, o.t]);
+            tl += o.n; tt += o.t;
+          });
+          if (order.length > 1) merges.push([r0, ws.rowCount]);
+          ws.addRow(['', '', '', '', 'Cộng', '', tl, '', tt]);
+          gl += tl; gt += tt;
         });
-        var r0 = rows.length;
-        order.forEach(function (g, i) {
-          var o = groups[g], c = cById(o.a.c);
-          rows.push([i === 0 ? n : '', i === 0 ? p.name : '', i === 0 ? (p.dept ? deptOf(p.dept).name : '') : '', p.guest ? 'Thỉnh giảng' : '', c ? c.name : '(môn đã xóa)', o.a.cr, o.n, o.a.p, o.t]);
-          tl += o.n; tt += o.t;
+        ws.addRow([]);
+        ws.addRow(['', '', '', '', 'TỔNG CỘNG', '', gl, '', gt]);
+        merges.forEach(function (m) { [1, 2, 3].forEach(function (col) { ws.mergeCells(m[0], col, m[1], col); }); });
+        ws.eachRow({ includeEmpty: true }, function (row, rn) {
+          for (var c = 1; c <= heads.length; c++) {
+            var cell = row.getCell(c);
+            cell.font = rn === 1 ? { name: FONT.name, size: FONT.size, bold: true } : { name: FONT.name, size: FONT.size };
+            if (rn === 1) cell.alignment = { vertical: 'top', horizontal: 'center', wrapText: true };
+            else if (c <= 3) cell.alignment = { vertical: 'top', horizontal: c === 1 ? 'center' : 'left', wrapText: true };
+            else cell.alignment = { vertical: 'top' };
+          }
         });
-        if (order.length > 1) for (var col = 0; col < 3; col++) merges.push({ s: { r: r0, c: col }, e: { r: rows.length - 1, c: col } });
-        rows.push(['', '', '', '', 'Cộng', '', tl, '', tt]);
-        gl += tl; gt += tt;
-      });
-      rows.push([]);
-      rows.push(['', '', '', '', 'TỔNG CỘNG', '', gl, '', gt]);
-      var ws = XLSX.utils.aoa_to_sheet(rows);
-      ws['!merges'] = merges;
-      ws['!cols'] = [{ wch: 5 }, { wch: 26 }, { wch: 22 }, { wch: 12 }, { wch: 46 }, { wch: 8 }, { wch: 8 }, { wch: 16 }, { wch: 10 }];
-      return ws;
-    }
-    var wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, sheetFor(function () { return true; }), 'Cả khoa');
-    DEPTS.forEach(function (d) { XLSX.utils.book_append_sheet(wb, sheetFor(function (p) { return p.dept === d.id; }), d.name); });
-    XLSX.utils.book_append_sheet(wb, sheetFor(function (p) { return p.guest; }), 'Thỉnh giảng');
-    XLSX.writeFile(wb, 'gio-day_' + S.year.replace('–', '-') + '_HK' + S.hk + '.xlsx');
+        ws.getRow(1).height = 24;
+      }
+      addSheet('Cả khoa', function () { return true; });
+      UNITS.forEach(function (d) { addSheet(d.name, function (p) { return p.dept === d.id; }); });
+      addSheet('Thỉnh giảng', function (p) { return p.guest; });
+      var buf = await wb.xlsx.writeBuffer();
+      var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      var url = URL.createObjectURL(blob), a = document.createElement('a');
+      a.href = url; a.download = 'gio-day_' + S.year.replace('–', '-') + '_HK' + S.hk + '.xlsx';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+    } catch (err) { toast('Chưa tạo được file Excel. Thử lại sau.'); }
   }
 
   /* ---------- Sự kiện ---------- */
@@ -766,6 +785,7 @@ const db = getFirestore(app);
     S.key = local ? local.replace(/\.g\d+$/, '') : null;
     S.isManager = !!S.key && MANAGERS.indexOf(S.key) >= 0;
     S.isAdmin = !!u && ADMIN_EMAILS.some(function (m) { return m.toLowerCase() === em; });
+    S.canExcel = S.isAdmin || (!!S.key && S.key === slug('Hoàng Nguyên Phương'));
     if (!u) { S.au.pw = ''; S.au.pw2 = ''; }
     render();
   });
