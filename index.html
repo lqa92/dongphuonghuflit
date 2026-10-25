@@ -195,6 +195,7 @@ details.dp[open] > summary { margin-bottom: 8px; }
   <main id="main"></main>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
@@ -358,7 +359,7 @@ const db = getFirestore(app);
     }
 
     $('#main').innerHTML =
-      '<section class="panel"><div class="panel-h"><h2>Số tiết theo giảng viên</h2><div class="chips">' + chips + '</div></div>' +
+      '<section class="panel"><div class="panel-h"><h2>Số tiết theo giảng viên</h2><button class="btn small" type="button" data-act="excel">Tải Excel</button><div class="chips">' + chips + '</div></div>' +
       '<div class="facts"><span>Đã nhập <b>' + entered.length + '/' + rows.length + '</b> giảng viên</span><span>Tổng <b>' + fmt(sum) + '</b> tiết</span><span>Trung bình <b>' + fmt(Math.round(mean)) + '</b> tiết/người</span></div>' +
       body + '</section>';
   }
@@ -532,6 +533,45 @@ const db = getFirestore(app);
     setTimeout(function () { if (dirty && !typing()) { dirty = false; render(); } }, 0);
   });
 
+  /* ---------- Xuất Excel ---------- */
+  function exportExcel() {
+    if (typeof XLSX === 'undefined') { toast('Chưa tải được công cụ tạo Excel. Kiểm tra mạng rồi thử lại.'); return; }
+    var k = key();
+    var ppl = people().sort(function (a, b) { return a.name.localeCompare(b.name, 'vi'); });
+    function sheetFor(filter) {
+      var rows = [['STT', 'Giảng viên', 'Bộ môn', 'Thỉnh giảng', 'Môn học', 'Tín chỉ', 'Số lớp', 'Tỷ lệ giờ dạy (%)', 'Số tiết']];
+      var n = 0, gl = 0, gt = 0;
+      ppl.filter(filter).forEach(function (p) {
+        var list = A.filter(function (a) { return a.sem === k && a.tid === p.id; }).sort(byCourse);
+        if (!list.length) return;
+        n++;
+        var groups = {}, order = [], tl = 0, tt = 0;
+        list.forEach(function (a) {
+          var g = a.c + '|' + a.cr + '|' + a.p;
+          if (!groups[g]) { groups[g] = { a: a, n: 0, t: 0 }; order.push(g); }
+          groups[g].n++; groups[g].t += tiet(a);
+        });
+        order.forEach(function (g) {
+          var o = groups[g], c = cById(o.a.c);
+          rows.push([n, p.name, p.dept ? deptOf(p.dept).name : '', p.guest ? 'Thỉnh giảng' : '', c ? c.name : '(môn đã xóa)', o.a.cr, o.n, o.a.p, o.t]);
+          tl += o.n; tt += o.t;
+        });
+        rows.push(['', p.name, '', '', 'Cộng', '', tl, '', tt]);
+        gl += tl; gt += tt;
+      });
+      rows.push([]);
+      rows.push(['', '', '', '', 'TỔNG CỘNG', '', gl, '', gt]);
+      var ws = XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols'] = [{ wch: 5 }, { wch: 26 }, { wch: 22 }, { wch: 12 }, { wch: 46 }, { wch: 8 }, { wch: 8 }, { wch: 16 }, { wch: 10 }];
+      return ws;
+    }
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, sheetFor(function () { return true; }), 'Cả khoa');
+    DEPTS.forEach(function (d) { XLSX.utils.book_append_sheet(wb, sheetFor(function (p) { return p.dept === d.id; }), d.name); });
+    XLSX.utils.book_append_sheet(wb, sheetFor(function (p) { return p.guest; }), 'Thỉnh giảng');
+    XLSX.writeFile(wb, 'gio-day_' + S.year.replace('–', '-') + '_HK' + S.hk + '.xlsx');
+  }
+
   /* ---------- Sự kiện ---------- */
   $('#fYear').innerHTML = YEARS.map(function (y) { return '<option' + (y === S.year ? ' selected' : '') + '>' + y + '</option>'; }).join('');
   $('#fHk').innerHTML = HKS.map(function (h) { return '<option value="' + h + '">Học kỳ ' + h + '</option>'; }).join('');
@@ -557,6 +597,7 @@ const db = getFirestore(app);
       }
       else if (act === 'mode') { var m = el.getAttribute('data-v'); S.au.mode = m; S.au.err = ''; S.au.pw = ''; S.au.pw2 = ''; render(); }
       else if (act === 'logout') { await signOut(auth); }
+      else if (act === 'excel') { exportExcel(); }
       else if (act === 'delname') { await deleteDoc(doc(db, 'roster', id)); }
       else if (act === 'del') {
         if (statusOf() !== 'open') return;
