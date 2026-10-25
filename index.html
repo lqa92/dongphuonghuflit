@@ -488,7 +488,7 @@ const db = getFirestore(app);
     var deptOpts = DEPTS.map(function (d) { return '<option value="' + d.id + '">' + d.name + '</option>'; }).join('');
     var pl = people().sort(function (a, b) { return a.name.localeCompare(b.name, 'vi'); });
     var peopleHtml = pl.length ? '<ul class="cat">' + pl.map(function (p) {
-      return '<li><span>' + esc(p.name) + '<span class="co">' + esc(loginEmail(p.id)) + ' · ' + (p.registered ? deptOf(p.dept).short + (p.guest ? ' · thỉnh giảng' : '') : 'chưa đăng nhập') + '</span></span>' +
+      return '<li><span>' + esc(p.name) + '<span class="co">' + (p.registered ? deptOf(p.dept).short + (p.guest ? ' · thỉnh giảng' : '') : 'chưa đăng nhập') + '</span></span>' +
         (R[p.id] && !p.registered ? '<button class="btn ghost small" type="button" data-act="delname" data-id="' + esc(p.id) + '">Xóa</button>' : '') + '</li>';
     }).join('') + '</ul>' : '';
     $('#main').innerHTML =
@@ -501,7 +501,7 @@ const db = getFirestore(app);
       '<form data-act="addname" class="body" style="padding:0"><h3 class="sect-h">Thêm tên thầy cô</h3>' +
       '<label class="field"><span>Họ tên</span><input type="text" id="rName" maxlength="60"></label>' +
       '<p class="err" id="rErr"></p><div class="btnrow"><button class="btn" type="submit">Thêm tên</button></div></form>' +
-      '<p class="note">Thầy cô quên mật khẩu: vào Firebase > Authentication > Users, tìm đúng địa chỉ đăng nhập ghi bên trên, bấm dấu ba chấm > Delete account. Sau đó thầy cô chọn tên, bấm "Quên mật khẩu" và tạo mật khẩu mới. Các môn đã nhập vẫn còn.</p></div></section>' +
+      '<p class="note">Thầy cô quên mật khẩu: vào Firebase > Authentication > Users, tìm theo tên không dấu viết nối bằng gạch ngang (ví dụ luong-quoc-an), bấm dấu ba chấm > Delete account. Sau đó thầy cô chọn tên, bấm "Quên mật khẩu" và tạo mật khẩu mới. Các môn đã nhập vẫn còn.</p></div></section>' +
       '<section class="panel"><div class="panel-h"><h2>Danh mục môn học</h2></div><div class="body">' + cat +
       '<form data-act="addcourse" class="body" style="padding:0"><h3 class="sect-h">Thêm môn vào danh mục</h3>' +
       '<label class="field"><span>Tên môn</span><input type="text" id="aName" maxlength="80"></label>' +
