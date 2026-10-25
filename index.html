@@ -259,8 +259,8 @@ const db = getFirestore(app);
     courseMap = {}; courses.forEach(function (c) { courseMap[c.id] = c; });
   }
   var PER_CR = 15; /* 2 tín chỉ = 30 tiết, 3 tín chỉ = 45 tiết */
-  var YEARS = ['2027–2028', '2026–2027', '2025–2026'];
-  var HKS = [1, 2];
+  var YEARS = ['2027–2028', '2026–2027'];
+  var HKS = [1, 2, 3];
 
   var T = {}, A = [], X = [], SEM = {}, R = {};
   var tiet = function (a) { return a.cr * PER_CR * a.p / 100; };
@@ -371,7 +371,7 @@ const db = getFirestore(app);
     }
 
     $('#main').innerHTML =
-      '<section class="panel"><div class="panel-h"><h2>Số tiết theo giảng viên</h2><button class="btn small" type="button" data-act="excel">Tải Excel</button><div class="chips">' + chips + '</div></div>' +
+      '<section class="panel"><div class="panel-h"><h2>Số tiết theo giảng viên</h2>' + (S.isAdmin ? '<button class="btn small" type="button" data-act="excel">Tải Excel</button>' : '') + '<div class="chips">' + chips + '</div></div>' +
       '<div class="facts"><span>Đã nhập <b>' + entered.length + '/' + rows.length + '</b> giảng viên</span><span>Tổng <b>' + fmt(sum) + '</b> tiết</span><span>Trung bình <b>' + fmt(Math.round(mean)) + '</b> tiết/người</span></div>' +
       body + '</section>';
   }
@@ -554,12 +554,13 @@ const db = getFirestore(app);
 
   /* ---------- Xuất Excel ---------- */
   function exportExcel() {
+    if (!S.isAdmin) return;
     if (typeof XLSX === 'undefined') { toast('Chưa tải được công cụ tạo Excel. Kiểm tra mạng rồi thử lại.'); return; }
     var k = key();
     var ppl = people().sort(function (a, b) { return a.name.localeCompare(b.name, 'vi'); });
     function sheetFor(filter) {
       var rows = [['STT', 'Giảng viên', 'Bộ môn', 'Thỉnh giảng', 'Môn học', 'Tín chỉ', 'Số lớp', 'Tỷ lệ giờ dạy (%)', 'Số tiết']];
-      var n = 0, gl = 0, gt = 0;
+      var n = 0, gl = 0, gt = 0, merges = [];
       ppl.filter(filter).forEach(function (p) {
         var list = A.filter(function (a) { return a.sem === k && a.tid === p.id; }).sort(byCourse);
         if (!list.length) return;
@@ -570,17 +571,20 @@ const db = getFirestore(app);
           if (!groups[g]) { groups[g] = { a: a, n: 0, t: 0 }; order.push(g); }
           groups[g].n++; groups[g].t += tiet(a);
         });
-        order.forEach(function (g) {
+        var r0 = rows.length;
+        order.forEach(function (g, i) {
           var o = groups[g], c = cById(o.a.c);
-          rows.push([n, p.name, p.dept ? deptOf(p.dept).name : '', p.guest ? 'Thỉnh giảng' : '', c ? c.name : '(môn đã xóa)', o.a.cr, o.n, o.a.p, o.t]);
+          rows.push([i === 0 ? n : '', i === 0 ? p.name : '', i === 0 ? (p.dept ? deptOf(p.dept).name : '') : '', p.guest ? 'Thỉnh giảng' : '', c ? c.name : '(môn đã xóa)', o.a.cr, o.n, o.a.p, o.t]);
           tl += o.n; tt += o.t;
         });
-        rows.push(['', p.name, '', '', 'Cộng', '', tl, '', tt]);
+        if (order.length > 1) for (var col = 0; col < 3; col++) merges.push({ s: { r: r0, c: col }, e: { r: rows.length - 1, c: col } });
+        rows.push(['', '', '', '', 'Cộng', '', tl, '', tt]);
         gl += tl; gt += tt;
       });
       rows.push([]);
       rows.push(['', '', '', '', 'TỔNG CỘNG', '', gl, '', gt]);
       var ws = XLSX.utils.aoa_to_sheet(rows);
+      ws['!merges'] = merges;
       ws['!cols'] = [{ wch: 5 }, { wch: 26 }, { wch: 22 }, { wch: 12 }, { wch: 46 }, { wch: 8 }, { wch: 8 }, { wch: 16 }, { wch: 10 }];
       return ws;
     }
