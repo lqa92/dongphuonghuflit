@@ -167,6 +167,7 @@ details.dp[open] > summary { margin-bottom: 8px; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); max-width: calc(100% - 32px); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: 14px; z-index: 20; }
 #status { display: flex; flex-direction: column; gap: 8px; }
 .linkbtn{font:inherit;font-size:13px;background:none;border:0;padding:0;color:var(--accent);text-decoration:underline;cursor:pointer}
+.row[data-dept="vp"] { --c: #b08a2e; }
 </style>
 
 <style>body{margin:0}[hidden]{display:none!important}</style>
@@ -217,7 +218,16 @@ const ADMIN_EMAILS = ['quocanluong@gmail.com'];
 /* Mỗi thầy cô đăng nhập bằng một "email nội bộ" tạo từ tên, thầy cô không cần biết. */
 const DOMAIN = 'giangvien.khoa';
 /* Danh sách tên có sẵn. Muốn thêm tên mới thì vào tab Quản trị. */
-const DEFAULT_ROSTER = ['Lương Quốc An', 'Hoàng Nguyên Phương', 'Nguyễn Thị Kim Ngọc', 'Huỳnh Thanh Long'];
+const DEFAULT_ROSTER = [
+  ['Hoàng Nguyên Phương', 'vp'], ['Lương Quốc An', 'han'], ['Lại Thị Minh Đức', 'viet'], ['Trần Thị Lệ Hằng', 'han'],
+  ['Nguyễn Hoàng Hiếu', 'nhat'], ['Trần Nguyễn Mỹ Hoàn', 'han'], ['Đinh Lan Hương', 'han'], ['Đặng Thanh Yến Linh', 'nhat'],
+  ['Huỳnh Thanh Long', 'nhat'], ['Hoàng Thị Bích Ngọc', 'han'], ['Nguyễn Thị Kim Ngọc', 'han'], ['Đỗ Nguyên', 'viet'],
+  ['Nguyễn Thị Minh Phương', 'han'], ['Nguyễn Xuân Quỳnh', 'nhat'], ['Lê Tuấn Sơn', 'han'], ['Mai Tấn Tài', 'han'],
+  ['Trần Văn Tiếng', 'viet'], ['Nguyễn Võ Phương Thanh', 'han'], ['Nguyễn Thị Phương Thu', 'nhat'], ['Phan Hoàng Tri Thức', 'han'],
+  ['Thạch Văn Việt', 'viet'], ['Phan Thị Thanh Xuyên', 'nhat']
+];
+/* Những người được thêm tên giảng viên mới vào danh sách (phải giống Rules của Firestore). */
+const MANAGER_NAMES = ['Hoàng Nguyên Phương', 'Lại Thị Minh Đức', 'Đinh Lan Hương', 'Huỳnh Thanh Long'];
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -235,7 +245,8 @@ const db = getFirestore(app);
     { id: 'nhat', name: 'Bộ môn tiếng Nhật', short: 'Bộ môn tiếng Nhật' },
     { id: 'viet', name: 'Bộ môn Việt Nam học', short: 'Bộ môn Việt Nam học' }
   ];
-  var deptOf = function (id) { return DEPTS.filter(function (d) { return d.id === id; })[0] || DEPTS[0]; };
+  var UNITS = DEPTS.concat([{ id: 'vp', name: 'Văn phòng khoa', short: 'Văn phòng khoa' }]);
+  var deptOf = function (id) { return UNITS.filter(function (d) { return d.id === id; })[0] || DEPTS[0]; };
 
   /* Danh mục môn từ file của khoa: [bộ môn, tên môn, [số tín chỉ có thể chọn]] */
   var RAW = [["han", "Đọc tiếng Hàn 1", [2, 3]], ["han", "Nghe tiếng Hàn 1", [2, 3]], ["han", "Nói tiếng Hàn 1", [2, 3]], ["han", "Viết tiếng Hàn 1", [2, 3]], ["han", "Đọc tiếng Hàn 2", [2, 3]], ["han", "Nghe tiếng Hàn 2", [2, 3]], ["han", "Nói tiếng Hàn 2", [2, 3]], ["han", "Viết tiếng Hàn 2", [2, 3]], ["han", "Đọc tiếng Hàn 3", [2, 3]], ["han", "Nghe tiếng Hàn 3", [2, 3]], ["han", "Nói tiếng Hàn 3", [2, 3]], ["han", "Viết tiếng Hàn 3", [2, 3]], ["han", "Đọc tiếng Hàn 4", [2, 3]], ["han", "Nghe tiếng Hàn 4", [2, 3]], ["han", "Nói tiếng Hàn 4", [2, 3]], ["han", "Viết tiếng Hàn 4", [2, 3]], ["han", "Lịch sử Korea", [2, 3]], ["han", "Văn hóa Korea", [2]], ["han", "Đàm thoại văn hóa, xã hội Hàn Quốc 1", [3]], ["han", "Thực hành văn bản tiếng Hàn 1", [3]], ["han", "Nghe tiếng Hàn nâng cao", [3]], ["han", "Đọc tiếng Hàn nâng cao", [3]], ["han", "Nghe tin thời sự Hàn Quốc", [3]], ["han", "Đàm thoại văn hóa, xã hội Hàn Quốc 2", [3]], ["han", "Thực hành văn bản tiếng Hàn 2", [3]], ["han", "Văn học Korea", [2, 3]], ["han", "Kỹ năng đọc hiểu văn bản tiếng Hàn", [3]], ["han", "Tiếng Hàn thương mại", [2, 3]], ["han", "Văn hóa doanh nghiệp Hàn Quốc", [3]], ["han", "Kỹ năng thuyết trình tiếng Hàn nâng cao", [3]], ["han", "Nói tiếng Hàn nâng cao", [3]], ["han", "Viết tiếng Hàn nâng cao", [3]], ["han", "Bản tin thời sự Hàn Quốc", [3]], ["han", "Seminar chuyên ngành Hàn Quốc học", [3]], ["han", "Ứng dụng công nghệ vào soạn thảo văn bản tiếng Hàn", [3]], ["han", "Địa lý – Kinh tế Hàn Quốc", [3]], ["han", "Văn hoá – Xã hội Hàn Quốc", [3]], ["han", "Thuyết trình tiếng Hàn ứng dụng đa phương tiện", [3]], ["han", "Tổng quan ngành Ngôn ngữ Hàn Quốc", [2]], ["han", "Thực hành tiếng Hàn 1", [2]], ["han", "Thực hành tiếng Hàn 2", [2]], ["han", "Ngữ âm - âm vị học tiếng Hàn", [2, 3]], ["han", "Địa lý Hàn Quốc", [2]], ["han", "Hình thái học tiếng Hàn", [2]], ["han", "Đọc tiếng Hàn 5", [2]], ["han", "Nghe tiếng Hàn 5", [2]], ["han", "Nói tiếng Hàn 5", [2]], ["han", "Viết tiếng Hàn 5", [2]], ["han", "Biên - phiên dịch tiếng Hàn cơ bản", [2]], ["han", "Soạn thảo văn bản tiếng Hàn", [2]], ["han", "Nhập môn giảng dạy tiếng Hàn", [2, 3]], ["han", "Đọc tiếng Hàn 6", [2]], ["han", "Nghe tiếng Hàn 6", [2]], ["han", "Nói tiếng Hàn 6", [2]], ["han", "Viết tiếng Hàn 6", [2]], ["han", "Cú pháp học tiếng Hàn", [2, 3]], ["han", "Tiếng Hàn thời sự", [2]], ["han", "Phương pháp giảng dạy tiếng Hàn", [2, 3]], ["han", "Giao tiếp liên văn hóa Việt - Hàn", [2]], ["han", "Tiếng Hàn công sở", [2, 3]], ["han", "Tiếng Hàn du lịch", [2, 3]], ["han", "Đọc tiếng Hàn 7", [2]], ["han", "Nghe tiếng Hàn 7", [2]], ["han", "Nói tiếng Hàn 7", [2]], ["han", "Viết tiếng Hàn 7", [2]], ["han", "Ngữ nghĩa học tiếng Hàn", [2]], ["han", "Biên - phiên dịch tiếng Hàn nâng cao", [2]], ["han", "Thực hành giảng dạy tiếng Hàn", [2, 3]], ["han", "Thuyết minh tuyến điểm Hàn - Việt", [2]], ["han", "Kỹ năng thuyết trình tiếng Hàn", [3]], ["han", "Ứng dụng công nghệ trong dịch thuật tiếng Hàn", [3]], ["han", "Từ vựng - Ngữ nghĩa học tiếng Hàn", [3]], ["han", "Kỹ năng dịch tiếng Hàn nâng cao", [3]], ["han", "Văn hoá Xã hội Hàn Quốc", [3]], ["han", "Biên phiên dịch chuyên ngành", [3]], ["han", "Thuyết minh tuyến điểm Việt - Hàn", [3]], ["han", "E-learning trong giảng dạy tiếng Hàn", [3]], ["han", "Tiếng Hàn 1", [3]], ["han", "Tiếng Hàn 2", [3]], ["han", "Tiếng Hàn 3", [3]], ["han", "Tiếng Hàn 4", [3]], ["nhat", "Tiếng Nhật 1", [3]], ["nhat", "Tiếng Nhật 2", [3]], ["nhat", "Tiếng Nhật 3", [3]], ["nhat", "Nghe tiếng Nhật 1", [3]], ["nhat", "Nghe tiếng Nhật 2", [3]], ["nhat", "Nghe tiếng Nhật 3", [3]], ["nhat", "Nghe tiếng Nhật 4", [3]], ["nhat", "Nghe tiếng Nhật nâng cao", [3]], ["nhat", "Nói tiếng Nhật 1", [3]], ["nhat", "Nói tiếng Nhật 2", [3]], ["nhat", "Nói tiếng Nhật 3", [3]], ["nhat", "Nói tiếng Nhật 4", [3]], ["nhat", "Nói tiếng Nhật nâng cao", [3]], ["nhat", "Đọc tiếng Nhật 1", [3]], ["nhat", "Đọc tiếng Nhật 2", [3]], ["nhat", "Đọc tiếng Nhật 3", [3]], ["nhat", "Đọc tiếng Nhật 4", [3]], ["nhat", "Đọc tiếng Nhật nâng cao", [3]], ["nhat", "Viết tiếng Nhật 1", [3]], ["nhat", "Viết tiếng Nhật 2", [3]], ["nhat", "Viết tiếng Nhật 3", [3]], ["nhat", "Viết tiếng Nhật 4", [3]], ["nhat", "Viết tiếng Nhật nâng cao", [3]], ["nhat", "Bản tin thời sự Nhật Bản", [3]], ["nhat", "Seminar chuyên ngành Nhật Bản học", [3]], ["nhat", "Ứng dụng công nghệ vào soạn thảo văn bản tiếng Nhật", [3]], ["nhat", "Địa lý – Kinh tế Nhật Bản", [3]], ["nhat", "Lịch sử Nhật Bản", [2, 3]], ["nhat", "Văn hoá – Xã hội Nhật Bản", [2, 3]], ["nhat", "Văn học Nhật Bản", [2, 3]], ["nhat", "Văn hoá doanh nghiệp Nhật Bản", [3]], ["nhat", "Thuyết trình tiếng Nhật ứng dụng đa phương tiện", [3]], ["nhat", "Nghe tin thời sự Nhật Bản", [3]], ["nhat", "Đàm thoại văn hóa, xã hội Nhật Bản 1", [3]], ["nhat", "Đàm thoại văn hóa, xã hội Nhật Bản 2", [3]], ["nhat", "Kỹ năng đọc hiểu văn bản tiếng Nhật", [3]], ["nhat", "Thực hành văn bản tiếng Nhật 1", [3]], ["nhat", "Thực hành văn bản tiếng Nhật 2", [3]], ["nhat", "Tiếng Nhật thương mại", [3]], ["nhat", "Kỹ năng thuyết trình tiếng Nhật", [3]], ["viet", "Tổng quan ngành Đông phương học", [2]], ["viet", "Cơ sở văn hóa Việt Nam", [2, 3]], ["viet", "Lịch sử văn minh phương Đông", [2, 3]], ["viet", "Phương pháp luận sáng tạo", [2, 3]], ["viet", "Dẫn luận ngôn ngữ học", [2]], ["viet", "Phương pháp nghiên cứu khoa học", [2, 3]], ["viet", "Tâm lý học đại cương", [2, 3]], ["viet", "Văn hóa tổ chức", [2]], ["viet", "Luật lao động", [2, 3]], ["viet", "Nghiệp vụ quản trị văn phòng và thư ký", [2, 3]], ["viet", "Nghiệp vụ hướng dẫn – tâm lý du lịch", [2, 3]], ["viet", "Tổng quan du lịch", [2]], ["viet", "Địa lý và dân cư ở Đông Á", [2]], ["viet", "Nghệ thuật truyền thống Phương Đông", [2]], ["viet", "Các tổ chức quốc tế & khu vực ở phương Đông", [2]], ["viet", "Xã hội ở các nước Đông Á", [2]], ["viet", "Hệ thống chính trị và pháp luật các nước phương Đông", [2]], ["viet", "Nghiệp vụ PR", [2]], ["viet", "Quản trị nguồn nhân lực", [2]], ["viet", "Nghiệp vụ tổ chức hội nghị, hội họp", [2]], ["viet", "Các vấn đề về dân tộc học và tôn giáo", [2]], ["viet", "Lược sử kiến trúc Mỹ thuật Việt Nam", [2]], ["viet", "Hệ thống tuyến điểm du lịch & luật du lịch", [2]], ["viet", "Cơ sở ngôn ngữ học và tiếng Việt", [3]], ["viet", "Hán tự tổng hợp", [3]], ["viet", "Logic học ứng dụng và tiếng Việt", [3]], ["viet", "Tổng quan du lịch và Luật du lịch", [3]], ["viet", "Nghiệp vụ PR và tổ chức sự kiện", [3]], ["viet", "Hệ thống tuyến điểm du lịch", [3]], ["viet", "Nghiệp vụ hướng dẫn tâm lý du lịch", [2]], ["viet", "Digital Marketing", [3]]];
@@ -265,15 +276,16 @@ const db = getFirestore(app);
   /* Mọi người: tên có sẵn + tên khoa thêm + người đã đăng nhập */
   function people() {
     var m = {};
-    DEFAULT_ROSTER.forEach(function (n) { m[slug(n)] = { id: slug(n), name: n, dept: null, guest: false, registered: false }; });
-    Object.keys(R).forEach(function (id) { if (!m[id]) m[id] = { id: id, name: R[id].name, dept: null, guest: false, registered: false }; });
+    DEFAULT_ROSTER.forEach(function (r) { m[slug(r[0])] = { id: slug(r[0]), name: r[0], dept: r[1] || null, guest: false, registered: false }; });
+    Object.keys(R).forEach(function (id) { if (!m[id]) m[id] = { id: id, name: R[id].name, dept: R[id].dept || null, guest: false, registered: false }; });
     Object.keys(T).forEach(function (id) { var t = T[id]; m[id] = { id: id, name: t.name, dept: t.dept, guest: !!t.guest, registered: true }; });
     return Object.keys(m).map(function (k) { return m[k]; });
   }
+  var MANAGERS = MANAGER_NAMES.map(function (n) { return slug(n); });
   var personOf = function (id) { return people().filter(function (p) { return p.id === id; })[0]; };
 
   var S = { year: '2026–2027', hk: 1, dept: 'all', tab: 'sum', open: {}, err: '', dbErr: '',
-    key: null, isAdmin: false, signedIn: false, authReady: false, teachersLoaded: false,
+    key: null, isAdmin: false, isManager: false, signedIn: false, authReady: false, teachersLoaded: false,
     au: { mode: 'login', slug: '', email: '', pw: '', pw2: '', dept: 'han', guest: false, err: '', info: '', busy: false },
     d: { q: '', c: '', cr: 3, nl: 1, p: 100 } };
   var skey = function () { return S.year.replace('–', '-') + '_' + S.hk; };
@@ -326,7 +338,7 @@ const db = getFirestore(app);
     var max = Math.max.apply(null, rows.map(function (r) { return r.total; }).concat([1]));
 
     var chips = '<button class="chip" data-act="dept" data-v="all" aria-pressed="' + (S.dept === 'all') + '">Tất cả</button>' +
-      DEPTS.map(function (d) { return '<button class="chip" data-act="dept" data-v="' + d.id + '" aria-pressed="' + (S.dept === d.id) + '">' + d.name + '</button>'; }).join('') +
+      UNITS.map(function (d) { return '<button class="chip" data-act="dept" data-v="' + d.id + '" aria-pressed="' + (S.dept === d.id) + '">' + d.name + '</button>'; }).join('') +
       '<button class="chip" data-act="dept" data-v="guest" aria-pressed="' + (S.dept === 'guest') + '">Thỉnh giảng</button>';
 
     var body;
@@ -393,7 +405,7 @@ const db = getFirestore(app);
   }
   function deptFields() {
     var a = S.au;
-    return '<div class="grid2"><label class="field"><span>Bộ môn</span><select id="uDept">' + DEPTS.map(function (x) { return '<option value="' + x.id + '"' + (x.id === a.dept ? ' selected' : '') + '>' + x.name + '</option>'; }).join('') + '</select></label>' +
+    return '<div class="grid2"><label class="field"><span>Bộ môn</span><select id="uDept">' + UNITS.map(function (x) { return '<option value="' + x.id + '"' + (x.id === a.dept ? ' selected' : '') + '>' + x.name + '</option>'; }).join('') + '</select></label>' +
       '<label class="check" style="align-self:end"><input type="checkbox" id="uGuest"' + (a.guest ? ' checked' : '') + '>Giảng viên thỉnh giảng</label></div>';
   }
   function renderAuth() {
@@ -473,9 +485,16 @@ const db = getFirestore(app);
         return '<li><span class="nmc"><span>' + esc(cc ? cc.name : '(môn đã xóa)') + '</span><span class="sm">' + a.cr + ' TC · ' + fmt(tiet(a)) + ' tiết' + (a.p < 100 ? ' (' + a.p + '%)' : '') + '</span></span>' + ctl + '</li>';
       }).join('') + '</ul><div class="mine-total"><span>Tổng số lớp học phần</span><span class="v">' + mine.length + ' lớp</span></div><div class="mine-total"><span>Tổng của thầy cô</span><span class="v">' + fmt(total) + ' tiết</span></div>';
 
+    var mgr = !S.isManager ? '' :
+      '<section class="panel"><div class="panel-h"><h2>Thêm giảng viên vào danh sách</h2></div><div class="body">' +
+      '<form data-act="addstaff" class="body" style="padding:0">' +
+      '<div class="grid2"><label class="field"><span>Họ tên giảng viên mới</span><input type="text" id="sName" maxlength="60"></label>' +
+      '<label class="field"><span>Bộ môn</span><select id="sDept"><option value="">Để giảng viên tự chọn</option>' + UNITS.map(function (x) { return '<option value="' + x.id + '">' + x.name + '</option>'; }).join('') + '</select></label></div>' +
+      '<p class="err" id="sErr"></p><div class="btnrow"><button class="btn" type="submit">Thêm vào danh sách</button></div>' +
+      '<p class="hint">Chỉ thêm tên vào danh sách. Giảng viên mới tự chọn tên mình và tạo mật khẩu ở lần vào đầu tiên.</p></form></div></section>';
     $('#main').innerHTML = head +
       '<div class="hello"><span>Đang nhập với tên <b>' + esc(me.name) + '</b></span><button class="btn ghost small" type="button" data-act="logout">Đăng xuất</button></div>' +
-      form + '<div class="field" style="gap:10px"><h3 class="sect-h">Các môn thầy cô đã nhập</h3>' + list + '</div></div></section>';
+      form + '<div class="field" style="gap:10px"><h3 class="sect-h">Các môn thầy cô đã nhập</h3>' + list + '</div></div></section>' + mgr;
   }
 
   /* ---------- Quản trị ---------- */
@@ -489,7 +508,7 @@ const db = getFirestore(app);
     var deptOpts = DEPTS.map(function (d) { return '<option value="' + d.id + '">' + d.name + '</option>'; }).join('');
     var pl = people().sort(function (a, b) { return a.name.localeCompare(b.name, 'vi'); });
     var peopleHtml = pl.length ? '<ul class="cat">' + pl.map(function (p) {
-      return '<li><span>' + esc(p.name) + ' (' + (p.registered ? deptOf(p.dept).short + (p.guest ? ', thỉnh giảng' : '') : 'chưa đăng nhập') + ')</span>' +
+      return '<li><span>' + esc(p.name) + ' (' + (p.registered ? deptOf(p.dept).short + (p.guest ? ', thỉnh giảng' : '') : (p.dept ? deptOf(p.dept).short + ', ' : '') + 'chưa đăng nhập') + ')</span>' +
         (R[p.id] && !p.registered ? '<button class="btn ghost small" type="button" data-act="delname" data-id="' + esc(p.id) + '">Xóa</button>' : '') + '</li>';
     }).join('') + '</ul>' : '';
     $('#main').innerHTML =
@@ -628,7 +647,7 @@ const db = getFirestore(app);
   main.addEventListener('change', async function (e) {
     var el = e.target, act = el.getAttribute('data-act');
     try {
-      if (el.id === 'uSlug') { var pp = personOf(el.value); S.au.slug = el.value; S.au.mode = pp && pp.registered ? 'login' : 'create'; S.au.err = ''; S.au.pw = ''; S.au.pw2 = ''; render(); }
+      if (el.id === 'uSlug') { var pp = personOf(el.value); S.au.slug = el.value; S.au.dept = pp && pp.dept ? pp.dept : 'han'; S.au.mode = pp && pp.registered ? 'login' : 'create'; S.au.err = ''; S.au.pw = ''; S.au.pw2 = ''; render(); }
       else if (el.id === 'uDept') S.au.dept = el.value;
       else if (el.id === 'uGuest') S.au.guest = el.checked;
       else if (act === 'pick') {
@@ -690,6 +709,13 @@ const db = getFirestore(app);
         var p2 = personOf(S.key);
         await setDoc(doc(db, 'teachers', S.key), { name: p2 ? p2.name : S.key, dept: a.dept, guest: !!a.guest });
         a.err = '';
+      } else if (act === 'addstaff') {
+        var sn = $('#sName').value.trim().replace(/\s+/g, ' '), sk = slug(sn), sd = $('#sDept').value;
+        if (!sk) { $('#sErr').textContent = 'Nhập họ tên.'; return; }
+        if (personOf(sk)) { $('#sErr').textContent = 'Tên này đã có trong danh sách.'; return; }
+        var sdoc = { name: sn }; if (sd) sdoc.dept = sd;
+        await setDoc(doc(db, 'roster', sk), sdoc);
+        $('#sName').value = '';
       } else if (act === 'addname') {
         var nn = $('#rName').value.trim().replace(/\s+/g, ' '), kk = slug(nn);
         if (!kk) { $('#rErr').textContent = 'Nhập họ tên.'; return; }
@@ -726,6 +752,7 @@ const db = getFirestore(app);
     var em = u ? (u.email || '').toLowerCase() : '';
     S.authReady = true; S.signedIn = !!u;
     S.key = em.slice(-(DOMAIN.length + 1)) === '@' + DOMAIN ? em.slice(0, -(DOMAIN.length + 1)) : null;
+    S.isManager = !!S.key && MANAGERS.indexOf(S.key) >= 0;
     S.isAdmin = !!u && ADMIN_EMAILS.some(function (m) { return m.toLowerCase() === em; });
     if (!u) { S.au.pw = ''; S.au.pw2 = ''; }
     render();
