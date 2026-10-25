@@ -60,7 +60,7 @@ h1 { margin: 0; font-size: 26px; line-height: 1.2; font-weight: 700; text-wrap: 
 .sub { margin: 4px 0 0; color: var(--muted); }
 .filters { display: flex; gap: 10px; }
 label.f { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--muted); }
-select, input[type="number"], input[type="text"], input[type="date"], input[type="search"] {
+select, input[type="number"], input[type="text"], input[type="date"], input[type="search"], input[type="password"], input[type="email"] {
   font: inherit; font-size: 16px; color: var(--ink); background: var(--surface);
   border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-height: 42px; min-width: 0; width: 100%;
 }
@@ -166,6 +166,7 @@ details.dp[open] > summary { margin-bottom: 8px; }
 .hello { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); max-width: calc(100% - 32px); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: 14px; z-index: 20; }
 #status { display: flex; flex-direction: column; gap: 8px; }
+.linkbtn{font:inherit;font-size:13px;background:none;border:0;padding:0;color:var(--accent);text-decoration:underline;cursor:pointer}
 </style>
 
 <style>body{margin:0}[hidden]{display:none!important}</style>
@@ -196,7 +197,7 @@ details.dp[open] > summary { margin-bottom: 8px; }
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { getFirestore, collection, doc, onSnapshot, addDoc, setDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -208,7 +209,14 @@ const firebaseConfig = {
   appId: "1:109564044579:web:bae67a5ad8ea097ca49896"
 };
 /* Email của người quản trị (cô phó khoa). Phải giống email trong Rules của Firestore. */
+
+
+/* Email của người quản trị. Phải giống email trong Rules của Firestore. */
 const ADMIN_EMAILS = ['quocanluong@gmail.com'];
+/* Mỗi thầy cô đăng nhập bằng một "email nội bộ" tạo từ tên, thầy cô không cần biết. */
+const DOMAIN = 'giangvien.khoa';
+/* Danh sách tên có sẵn. Muốn thêm tên mới thì vào tab Quản trị. */
+const DEFAULT_ROSTER = ['Lương Quốc An', 'Hoàng Nguyên Phương', 'Nguyễn Thị Kim Ngọc', 'Huỳnh Thanh Long'];
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -229,7 +237,7 @@ const db = getFirestore(app);
   var deptOf = function (id) { return DEPTS.filter(function (d) { return d.id === id; })[0] || DEPTS[0]; };
 
   /* Danh mục môn từ file của khoa: [bộ môn, tên môn, [số tín chỉ có thể chọn]] */
-  var RAW = [["han", "Đọc tiếng Hàn 1", [2, 3]], ["han", "Nghe tiếng Hàn 1", [2, 3]], ["han", "Nói tiếng Hàn 1", [2, 3]], ["han", "Viết tiếng Hàn 1", [2, 3]], ["han", "Đọc tiếng Hàn 2", [2, 3]], ["han", "Nghe tiếng Hàn 2", [2, 3]], ["han", "Nói tiếng Hàn 2", [2, 3]], ["han", "Viết tiếng Hàn 2", [2, 3]], ["han", "Đọc tiếng Hàn 3", [2, 3]], ["han", "Nghe tiếng Hàn 3", [2, 3]], ["han", "Nói tiếng Hàn 3", [2, 3]], ["han", "Viết tiếng Hàn 3", [2, 3]], ["han", "Đọc tiếng Hàn 4", [2, 3]], ["han", "Nghe tiếng Hàn 4", [2, 3]], ["han", "Nói tiếng Hàn 4", [2, 3]], ["han", "Viết tiếng Hàn 4", [2, 3]], ["han", "Lịch sử Korea", [2, 3]], ["han", "Văn hóa Korea", [2]], ["han", "Đàm thoại văn hóa, xã hội Hàn Quốc 1", [3]], ["han", "Thực hành văn bản tiếng Hàn 1", [3]], ["han", "Nghe tiếng Hàn nâng cao", [3]], ["han", "Đọc tiếng Hàn nâng cao", [3]], ["han", "Nghe tin thời sự Hàn Quốc", [3]], ["han", "Đàm thoại văn hóa, xã hội Hàn Quốc 2", [3]], ["han", "Thực hành văn bản tiếng Hàn 2", [3]], ["han", "Văn học Korea", [2, 3]], ["han", "Kỹ năng đọc hiểu văn bản tiếng Hàn", [3]], ["han", "Tiếng Hàn thương mại", [2, 3]], ["han", "Văn hóa doanh nghiệp Hàn Quốc", [3]], ["han", "Kỹ năng thuyết trình tiếng Hàn nâng cao", [3]], ["han", "Nói tiếng Hàn nâng cao", [3]], ["han", "Viết tiếng Hàn nâng cao", [3]], ["han", "Bản tin thời sự Hàn Quốc", [3]], ["han", "Seminar chuyên ngành Hàn Quốc học", [3]], ["han", "Ứng dụng công nghệ vào soạn thảo văn bản tiếng Hàn", [3]], ["han", "Địa lý – Kinh tế Hàn Quốc", [3]], ["han", "Văn hoá – Xã hội Hàn Quốc", [3]], ["han", "Thuyết trình tiếng Hàn ứng dụng đa phương tiện", [3]], ["han", "Tổng quan ngành Ngôn ngữ Hàn Quốc", [2]], ["han", "Thực hành tiếng Hàn 1", [2]], ["han", "Thực hành tiếng Hàn 2", [2]], ["han", "Ngữ âm - âm vị học tiếng Hàn", [2, 3]], ["han", "Địa lý Hàn Quốc", [2]], ["han", "Hình thái học tiếng Hàn", [2]], ["han", "Đọc tiếng Hàn 5", [2]], ["han", "Nghe tiếng Hàn 5", [2]], ["han", "Nói tiếng Hàn 5", [2]], ["han", "Viết tiếng Hàn 5", [2]], ["han", "Biên - phiên dịch tiếng Hàn cơ bản", [2]], ["han", "Soạn thảo văn bản tiếng Hàn", [2]], ["han", "Nhập môn giảng dạy tiếng Hàn", [2, 3]], ["han", "Đọc tiếng Hàn 6", [2]], ["han", "Nghe tiếng Hàn 6", [2]], ["han", "Nói tiếng Hàn 6", [2]], ["han", "Viết tiếng Hàn 6", [2]], ["han", "Cú pháp học tiếng Hàn", [2, 3]], ["han", "Tiếng Hàn thời sự", [2]], ["han", "Phương pháp giảng dạy tiếng Hàn", [2, 3]], ["han", "Giao tiếp liên văn hóa Việt - Hàn", [2]], ["han", "Tiếng Hàn công sở", [2, 3]], ["han", "Tiếng Hàn du lịch", [2, 3]], ["han", "Đọc tiếng Hàn 7", [2]], ["han", "Nghe tiếng Hàn 7", [2]], ["han", "Nói tiếng Hàn 7", [2]], ["han", "Viết tiếng Hàn 7", [2]], ["han", "Ngữ nghĩa học tiếng Hàn", [2]], ["han", "Biên - phiên dịch tiếng Hàn nâng cao", [2]], ["han", "Thực hành giảng dạy tiếng Hàn", [2, 3]], ["han", "Thuyết minh tuyến điểm Hàn - Việt", [2]], ["han", "Kỹ năng thuyết trình tiếng Hàn", [3]], ["han", "Ứng dụng công nghệ trong dịch thuật tiếng Hàn", [3]], ["han", "Từ vựng - Ngữ nghĩa học tiếng Hàn", [3]], ["han", "Kỹ năng dịch tiếng Hàn nâng cao", [3]], ["han", "Văn hoá Xã hội Hàn Quốc", [3]], ["han", "Biên phiên dịch chuyên ngành", [3]], ["han", "Thuyết minh tuyến điểm Việt - Hàn", [3]], ["han", "E-learning trong giảng dạy tiếng Hàn", [3]], ["han", "Tiếng Hàn 1", [3]], ["han", "Tiếng Hàn 2", [3]], ["han", "Tiếng Hàn 3", [3]], ["han", "Tiếng Hàn 4", [3]], ["nhat", "Tiếng Nhật 1", [3]], ["nhat", "Tiếng Nhật 2", [3]], ["nhat", "Tiếng Nhật 3", [3]], ["nhat", "Nghe tiếng Nhật 1", [3]], ["nhat", "Nghe tiếng Nhật 2", [3]], ["nhat", "Nghe tiếng Nhật 3", [3]], ["nhat", "Nghe tiếng Nhật 4", [3]], ["nhat", "Nghe tiếng Nhật nâng cao", [3]], ["nhat", "Nói tiếng Nhật 1", [3]], ["nhat", "Nói tiếng Nhật 2", [3]], ["nhat", "Nói tiếng Nhật 3", [3]], ["nhat", "Nói tiếng Nhật 4", [3]], ["nhat", "Nói tiếng Nhật nâng cao", [3]], ["nhat", "Đọc tiếng Nhật 1", [3]], ["nhat", "Đọc tiếng Nhật 2", [3]], ["nhat", "Đọc tiếng Nhật 3", [3]], ["nhat", "Đọc tiếng Nhật 4", [3]], ["nhat", "Đọc tiếng Nhật nâng cao", [3]], ["nhat", "Viết tiếng Nhật 1", [3]], ["nhat", "Viết tiếng Nhật 2", [3]], ["nhat", "Viết tiếng Nhật 3", [3]], ["nhat", "Viết tiếng Nhật 4", [3]], ["nhat", "Viết tiếng Nhật nâng cao", [3]], ["nhat", "Bản tin thời sự Nhật Bản", [3]], ["nhat", "Seminar chuyên ngành Nhật Bản học", [3]], ["nhat", "Ứng dụng công nghệ vào soạn thảo văn bản tiếng Nhật", [3]], ["nhat", "Địa lý – Kinh tế Nhật Bản", [3]], ["nhat", "Lịch sử Nhật Bản", [2, 3]], ["nhat", "Văn hoá – Xã hội Nhật Bản", [2, 3]], ["nhat", "Văn học Nhật Bản", [2, 3]], ["nhat", "Văn hoá doanh nghiệp Nhật Bản", [3]], ["nhat", "Thuyết trình tiếng Nhật ứng dụng đa phương tiện", [3]], ["nhat", "Nghe tin thời sự Nhật Bản", [3]], ["nhat", "Đàm thoại văn hóa, xã hội Nhật Bản 1", [3]], ["nhat", "Đàm thoại văn hóa, xã hội Nhật Bản 2", [3]], ["nhat", "Kỹ năng đọc hiểu văn bản tiếng Nhật", [3]], ["nhat", "Thực hành văn bản tiếng Nhật 1", [3]], ["nhat", "Thực hành văn bản tiếng Nhật 2", [3]], ["nhat", "Tiếng Nhật thương mại", [3]], ["nhat", "Kỹ năng thuyết trình tiếng Nhật", [3]], ["viet", "Tổng quan ngành Đông phương học", [2]], ["viet", "Cơ sở văn hóa Việt Nam", [2, 3]], ["viet", "Lịch sử văn minh phương Đông", [2, 3]], ["viet", "Phương pháp luận sáng tạo", [2, 3]], ["viet", "Dẫn luận ngôn ngữ học", [2]], ["viet", "Phương pháp nghiên cứu khoa học", [2, 3]], ["viet", "Tâm lý học đại cương", [2, 3]], ["viet", "Văn hóa tổ chức", [2]], ["viet", "Luật lao động", [2, 3]], ["viet", "Nghiệp vụ quản trị văn phòng và thư ký", [2, 3]], ["viet", "Nghiệp vụ hướng dẫn – tâm lý du lịch", [2, 3]], ["viet", "Tổng quan du lịch", [2]], ["viet", "Địa lý và dân cư ở Đông Á", [2]], ["viet", "Nghệ thuật truyền thống Phương Đông", [2]], ["viet", "Các tổ chức quốc tế & khu vực ở phương Đông", [2]], ["viet", "Xã hội ở các nước Đông Á", [2]], ["viet", "Hệ thống chính trị và pháp luật các nước phương Đông", [2]], ["viet", "Nghiệp vụ PR", [2]], ["viet", "Quản trị nguồn nhân lực", [2]], ["viet", "Nghiệp vụ tổ chức hội nghị, hội họp", [2]], ["viet", "Các vấn đề về dân tộc học và tôn giáo", [2]], ["viet", "Lược sử kiến trúc Mỹ thuật Việt Nam", [2]], ["viet", "Hệ thống tuyến điểm du lịch & luật du lịch", [2]], ["viet", "Cơ sở ngôn ngữ học và tiếng Việt", [3]], ["viet", "Hán tự tổng hợp", [3]], ["viet", "Logic học ứng dụng và tiếng Việt", [3]], ["viet", "Tổng quan du lịch và Luật du lịch", [3]], ["viet", "Nghiệp vụ PR và tổ chức sự kiện", [3]], ["viet", "Hệ thống tuyến điểm du lịch", [3]], ["viet", "Nghiệp vụ hướng dẫn tâm lý du lịch", [2]], ["viet", "Digital Marketing", [3]]];
+  var RAW = /*COURSES*/[];
   var base = RAW.map(function (r, i) { return { id: 'c' + i, dept: r[0], name: r[1], cr: r[2] }; });
   var courses = [], courseMap = {};
   var cById = function (id) { return courseMap[id]; };
@@ -242,18 +250,29 @@ const db = getFirestore(app);
   var YEARS = ['2027–2028', '2026–2027', '2025–2026'];
   var HKS = [1, 2];
 
-  var T = {}, A = [], X = [], SEM = {};
+  var T = {}, A = [], X = [], SEM = {}, R = {};
   var tiet = function (a) { return a.cr * PER_CR * a.p / 100; };
-  var teacherList = function () {
-    return Object.keys(T).map(function (id) { var t = T[id]; return { id: id, name: t.name, dept: t.dept, guest: !!t.guest }; });
+  var slug = function (s) {
+    return s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'd').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   };
+  var loginEmail = function (k) { return k + '@' + DOMAIN; };
+  /* Mọi người: tên có sẵn + tên khoa thêm + người đã đăng nhập */
+  function people() {
+    var m = {};
+    DEFAULT_ROSTER.forEach(function (n) { m[slug(n)] = { id: slug(n), name: n, dept: null, guest: false, registered: false }; });
+    Object.keys(R).forEach(function (id) { if (!m[id]) m[id] = { id: id, name: R[id].name, dept: null, guest: false, registered: false }; });
+    Object.keys(T).forEach(function (id) { var t = T[id]; m[id] = { id: id, name: t.name, dept: t.dept, guest: !!t.guest, registered: true }; });
+    return Object.keys(m).map(function (k) { return m[k]; });
+  }
+  var personOf = function (id) { return people().filter(function (p) { return p.id === id; })[0]; };
 
   var S = { year: '2026–2027', hk: 1, dept: 'all', tab: 'sum', open: {}, err: '', dbErr: '',
-    uid: null, isAdmin: false, authReady: false, teachersLoaded: false,
-    au: { mode: 'login', email: '', pw: '', pw2: '', name: '', dept: 'han', guest: false, err: '', info: '', busy: false },
+    key: null, isAdmin: false, signedIn: false, authReady: false, teachersLoaded: false,
+    au: { mode: 'login', slug: '', email: '', pw: '', pw2: '', dept: 'han', guest: false, err: '', info: '', busy: false },
     d: { q: '', c: '', cr: 3, nl: 1, p: 100 } };
   var skey = function () { return S.year.replace('–', '-') + '_' + S.hk; };
   var key = function () { return skey(); };
+  var freshAu = function () { return { mode: 'login', slug: '', email: '', pw: '', pw2: '', dept: 'han', guest: false, err: '', info: '', busy: false }; };
 
   function statusOf() {
     var s = SEM[skey()];
@@ -266,13 +285,12 @@ const db = getFirestore(app);
   }
   function authMsg(e) {
     var c = e && e.code || '';
-    if (c === 'auth/invalid-credential' || c === 'auth/wrong-password' || c === 'auth/user-not-found') return 'Email hoặc mật khẩu chưa đúng.';
-    if (c === 'auth/email-already-in-use') return 'Email này đã có tài khoản. Chọn "Đăng nhập", hoặc "Quên mật khẩu" nếu cần.';
+    if (c === 'auth/invalid-credential' || c === 'auth/wrong-password' || c === 'auth/user-not-found') return 'Mật khẩu chưa đúng.';
+    if (c === 'auth/email-already-in-use') return 'Tên này đã có mật khẩu rồi.';
     if (c === 'auth/weak-password') return 'Mật khẩu cần ít nhất 6 ký tự.';
-    if (c === 'auth/invalid-email') return 'Email chưa đúng dạng, ví dụ ten@truong.edu.vn.';
     if (c === 'auth/too-many-requests') return 'Thử quá nhiều lần. Chờ vài phút rồi thử lại.';
     if (c === 'auth/network-request-failed') return 'Mất kết nối mạng. Kiểm tra mạng rồi thử lại.';
-    if (c === 'auth/operation-not-allowed') return 'Chưa bật đăng nhập bằng Email/Password trong Firebase.';
+    if (c === 'auth/operation-not-allowed') return 'Chưa bật đăng nhập Email/Password trong Firebase.';
     if (c === 'permission-denied') return 'Không có quyền thực hiện. Kiểm tra lại Rules trong Firestore.';
     return 'Chưa thực hiện được. Thử lại sau ít giây.';
   }
@@ -291,7 +309,7 @@ const db = getFirestore(app);
   /* ---------- Tổng hợp ---------- */
   function renderSummary() {
     var k = key();
-    var rows = teacherList().filter(function (t) { return S.dept === 'all' || (S.dept === 'guest' ? t.guest : t.dept === S.dept); }).map(function (t) {
+    var rows = people().filter(function (t) { return S.dept === 'all' || (S.dept === 'guest' ? t.guest : t.dept === S.dept); }).map(function (t) {
       var list = A.filter(function (a) { return a.sem === k && a.tid === t.id; });
       return { t: t, list: list, total: list.reduce(function (s, a) { return s + tiet(a); }, 0) };
     });
@@ -307,7 +325,7 @@ const db = getFirestore(app);
 
     var body;
     if (!rows.length) {
-      body = '<div class="empty">Chưa có giảng viên nào. Thầy cô vào tab "Nhập môn dạy" để tạo tài khoản và nhập môn.</div>';
+      body = '<div class="empty">Chưa có giảng viên nào.</div>';
     } else {
       body = rows.map(function (r) {
         var open = !!S.open[r.t.id];
@@ -322,9 +340,9 @@ const db = getFirestore(app);
           var o = groups[g], c = cById(o.a.c);
           return '<li><span>' + esc(c ? c.name : '(môn đã xóa)') + '<span class="co">' + o.a.cr + ' tín chỉ' + (o.n > 1 ? ' · ' + o.n + ' lớp' : '') + (o.a.p < 100 ? ' · tỷ lệ ' + o.a.p + '%' : '') + '</span></span><span class="t">' + fmt(o.t) + ' tiết</span></li>';
         }).join('') + '</ul>' : '<p class="hint" style="margin-top:8px">Chưa nhập môn nào.</p>';
-        return '<div class="row" data-dept="' + r.t.dept + '">' +
+        return '<div class="row" data-dept="' + (r.t.dept || '') + '">' +
           '<button class="row-btn" data-act="toggle" data-id="' + esc(r.t.id) + '" aria-expanded="' + open + '">' +
-          '<span class="who"><span class="nm">' + esc(r.t.name) + '</span><span class="meta"><i class="dot"></i>' + deptOf(r.t.dept).short + ' · ' + (r.total ? r.list.length + ' lớp' : 'Chưa nhập') + (r.t.guest ? ' <span class="guest">Thỉnh giảng</span>' : '') + '</span></span>' +
+          '<span class="who"><span class="nm">' + esc(r.t.name) + '</span><span class="meta"><i class="dot"></i>' + (r.t.registered ? deptOf(r.t.dept).short + ' · ' + (r.total ? r.list.length + ' lớp' : 'Chưa nhập') : 'Chưa đăng nhập lần nào') + (r.t.guest ? ' <span class="guest">Thỉnh giảng</span>' : '') + '</span></span>' +
           '<span class="bar"><span class="fill" style="width:' + w + '%"></span>' + (r.total && mean ? '<span class="tick" style="left:' + (mean / max * 100) + '%"></span>' : '') + '</span>' +
           (r.total ? '<span class="num">' + fmt(r.total) + '<small>tiết</small></span>' : '<span class="num none">—</span>') +
           '</button><div class="detail"' + (open ? '' : ' hidden') + '>' + det + '</div></div>';
@@ -366,39 +384,59 @@ const db = getFirestore(app);
     if (!cById(d.c)) return '';
     return d.nl + ' lớp × ' + d.cr + ' tín chỉ (' + d.cr * PER_CR + ' tiết) × ' + d.p + '% = <b>' + fmt(d.cr * PER_CR * d.p / 100 * d.nl) + ' tiết</b>';
   }
-  function deptFields(prefix) {
+  function deptFields() {
     var a = S.au;
-    return '<div class="grid2"><label class="field"><span>Bộ môn</span><select id="' + prefix + 'Dept">' + DEPTS.map(function (x) { return '<option value="' + x.id + '"' + (x.id === a.dept ? ' selected' : '') + '>' + x.name + '</option>'; }).join('') + '</select></label>' +
-      '<label class="check" style="align-self:end"><input type="checkbox" id="' + prefix + 'Guest"' + (a.guest ? ' checked' : '') + '>Giảng viên thỉnh giảng</label></div>';
+    return '<div class="grid2"><label class="field"><span>Bộ môn</span><select id="uDept">' + DEPTS.map(function (x) { return '<option value="' + x.id + '"' + (x.id === a.dept ? ' selected' : '') + '>' + x.name + '</option>'; }).join('') + '</select></label>' +
+      '<label class="check" style="align-self:end"><input type="checkbox" id="uGuest"' + (a.guest ? ' checked' : '') + '>Giảng viên thỉnh giảng</label></div>';
   }
   function renderAuth() {
-    var a = S.au, reg = a.mode === 'register';
-    var tabs = '<div class="chips"><button class="chip" type="button" data-act="mode" data-v="login" aria-pressed="' + !reg + '">Đăng nhập</button><button class="chip" type="button" data-act="mode" data-v="register" aria-pressed="' + reg + '">Tạo tài khoản mới</button></div>';
-    var fields =
-      '<label class="field"><span>Email</span><input type="email" id="uEmail" autocomplete="email" value="' + esc(a.email) + '"></label>' +
-      (reg ? '<label class="field"><span>Họ tên Thầy Cô</span><input type="text" id="uName" maxlength="60" autocomplete="name" value="' + esc(a.name) + '"></label>' + deptFields('u') : '') +
-      (reg ? '<div class="grid2"><label class="field"><span>Mật khẩu (ít nhất 6 ký tự)</span><input type="password" id="uPw" autocomplete="new-password" value="' + esc(a.pw) + '"></label><label class="field"><span>Nhập lại mật khẩu</span><input type="password" id="uPw2" autocomplete="new-password" value="' + esc(a.pw2) + '"></label></div>'
-        : '<label class="field"><span>Mật khẩu</span><input type="password" id="uPw" autocomplete="current-password" value="' + esc(a.pw) + '"></label>');
-    return '<form data-act="auth" class="body" style="padding:0">' + tabs +
-      (reg ? '<p class="note">Thầy cô lần đầu vào: tạo tài khoản bằng email và mật khẩu của riêng mình. Lần sau đăng nhập lại để sửa phần mình đã nhập.</p>' : '') +
-      fields + '<p class="err" id="uErr">' + esc(a.err) + '</p>' + (a.info ? '<p class="note">' + esc(a.info) + '</p>' : '') +
-      '<div class="btnrow"><button class="btn" type="submit"' + (a.busy ? ' disabled' : '') + '>' + (a.busy ? 'Đang xử lý...' : reg ? 'Tạo tài khoản' : 'Đăng nhập') + '</button>' +
-      (reg ? '' : '<button class="btn ghost" type="button" data-act="forgot">Quên mật khẩu</button>') + '</div>' +
-      '<p class="hint">Mật khẩu chỉ để thầy cô khác không sửa được phần của bạn. Đừng dùng mật khẩu của email hay ngân hàng.</p></form>';
+    var a = S.au;
+    if (a.mode === 'admin') {
+      return '<form data-act="auth" class="body" style="padding:0"><h3 class="sect-h">Đăng nhập quản trị</h3>' +
+        '<label class="field"><span>Email quản trị</span><input type="email" id="uEmail" autocomplete="email" value="' + esc(a.email) + '"></label>' +
+        '<label class="field"><span>Mật khẩu</span><input type="password" id="uPw" autocomplete="current-password" value="' + esc(a.pw) + '"></label>' +
+        '<p class="err" id="uErr">' + esc(a.err) + '</p><div class="btnrow"><button class="btn" type="submit"' + (a.busy ? ' disabled' : '') + '>Đăng nhập</button><button class="btn ghost" type="button" data-act="mode" data-v="login">Về đăng nhập thầy cô</button></div></form>';
+    }
+    var list = people().sort(function (x, y) { return x.name.localeCompare(y.name, 'vi'); });
+    var opts = '<option value="">Chọn tên của thầy cô</option>' + list.map(function (p) { return '<option value="' + esc(p.id) + '"' + (p.id === a.slug ? ' selected' : '') + '>' + esc(p.name) + (p.registered ? '' : ' (chưa đăng nhập lần nào)') + '</option>'; }).join('');
+    var body = '';
+    if (a.slug) {
+      if (a.mode === 'login') {
+        body = '<label class="field"><span>Mật khẩu</span><input type="password" id="uPw" autocomplete="current-password" value="' + esc(a.pw) + '"></label>';
+      } else {
+        body = (a.mode === 'create'
+          ? '<p class="note">Thầy cô lần đầu vào: chọn bộ môn và tạo mật khẩu của riêng mình. Lần sau chọn tên và nhập đúng mật khẩu này để sửa phần mình đã nhập.</p>' + deptFields()
+          : '<p class="note">Chỉ dùng khi khoa đã xóa mật khẩu cũ của thầy cô. Hãy tạo mật khẩu mới, các môn đã nhập vẫn còn.</p>') +
+          '<div class="grid2"><label class="field"><span>Mật khẩu (ít nhất 6 ký tự)</span><input type="password" id="uPw" autocomplete="new-password" value="' + esc(a.pw) + '"></label>' +
+          '<label class="field"><span>Nhập lại mật khẩu</span><input type="password" id="uPw2" autocomplete="new-password" value="' + esc(a.pw2) + '"></label></div>';
+      }
+    }
+    var btn = a.mode === 'create' ? 'Tạo mật khẩu và vào' : a.mode === 'recreate' ? 'Tạo lại mật khẩu' : 'Vào';
+    return '<form data-act="auth" class="body" style="padding:0">' +
+      '<label class="field"><span>Họ tên Thầy Cô</span><select id="uSlug">' + opts + '</select></label>' + body +
+      '<p class="err" id="uErr">' + esc(a.err) + '</p>' +
+      '<div class="btnrow"><button class="btn" type="submit"' + (!a.slug || a.busy ? ' disabled' : '') + '>' + (a.busy ? 'Đang xử lý...' : btn) + '</button>' +
+      (a.slug && a.mode === 'login' ? '<button class="btn ghost" type="button" data-act="mode" data-v="recreate">Quên mật khẩu</button>' : '') +
+      (a.mode === 'recreate' ? '<button class="btn ghost" type="button" data-act="mode" data-v="login">Quay lại</button>' : '') + '</div>' +
+      '<p class="hint">Mật khẩu chỉ để thầy cô khác không sửa được phần của bạn. Đừng dùng mật khẩu của email hay ngân hàng.</p>' +
+      '<p class="hint"><button class="linkbtn" type="button" data-act="mode" data-v="admin">Đăng nhập quản trị</button></p></form>';
   }
   function renderProfile() {
-    var a = S.au;
-    return '<form data-act="profile" class="body" style="padding:0"><p class="note">Tài khoản này chưa có hồ sơ giảng viên. Điền họ tên và bộ môn để tiếp tục.</p>' +
-      '<label class="field"><span>Họ tên Thầy Cô</span><input type="text" id="uName" maxlength="60" value="' + esc(a.name) + '"></label>' + deptFields('u') +
+    var a = S.au, p = personOf(S.key);
+    return '<form data-act="profile" class="body" style="padding:0"><p class="note">Chọn bộ môn của thầy cô để hoàn tất.</p>' +
+      '<p><b>' + esc(p ? p.name : S.key) + '</b></p>' + deptFields() +
       '<p class="err" id="uErr">' + esc(a.err) + '</p><div class="btnrow"><button class="btn" type="submit"' + (a.busy ? ' disabled' : '') + '>Lưu</button><button class="btn ghost" type="button" data-act="logout">Đăng xuất</button></div></form>';
   }
 
   function renderEnter() {
     var k = key(), st = statusOf();
     var head = '<section class="panel"><div class="panel-h"><h2>Nhập môn dạy</h2></div><div class="body">';
-    if (!S.authReady || (S.uid && !S.teachersLoaded)) { $('#main').innerHTML = head + '<p class="hint">Đang tải...</p></div></section>'; return; }
-    if (!S.uid) { $('#main').innerHTML = head + renderAuth() + '</div></section>'; return; }
-    var me = T[S.uid];
+    if (!S.authReady || (S.key && !S.teachersLoaded)) { $('#main').innerHTML = head + '<p class="hint">Đang tải...</p></div></section>'; return; }
+    if (S.signedIn && !S.key) {
+      $('#main').innerHTML = head + '<p class="note">Đang đăng nhập bằng tài khoản quản trị. Tài khoản này dùng ở tab Quản trị. Muốn nhập môn dạy, hãy đăng xuất rồi vào bằng tên thầy cô.</p><div class="btnrow"><button class="btn ghost" type="button" data-act="logout">Đăng xuất</button></div></div></section>'; return;
+    }
+    if (!S.key) { $('#main').innerHTML = head + renderAuth() + '</div></section>'; return; }
+    var me = T[S.key];
     if (!me) { $('#main').innerHTML = head + renderProfile() + '</div></section>'; return; }
     var canEdit = st === 'open';
     syncDraftCourse();
@@ -417,7 +455,7 @@ const db = getFirestore(app);
       '<div class="btnrow"><button class="btn" type="submit"' + (c ? '' : ' disabled') + '>Thêm môn</button></div></form>' :
       '<p class="note">' + ((st === 'soon' || st === 'unset') ? 'Chưa đến thời gian nhập. Thầy cô quay lại khi khoa mở nhập.' : 'Học kỳ này đã khóa nên không thêm hoặc sửa được. Thầy cô vẫn xem được các môn đã nhập bên dưới.') + '</p>';
 
-    var mine = A.filter(function (a) { return a.sem === k && a.tid === S.uid; });
+    var mine = A.filter(function (a) { return a.sem === k && a.tid === S.key; });
     var total = mine.reduce(function (s, a) { return s + tiet(a); }, 0);
     var list = !mine.length ? '<p class="hint">Chưa có môn nào trong học kỳ này.</p>' :
       '<ul class="mine">' + mine.map(function (a) {
@@ -442,12 +480,22 @@ const db = getFirestore(app);
         cs.map(function (c) { return '<li><span>' + esc(c.name) + '</span><span class="t">' + c.cr.join(' / ') + ' TC</span></li>'; }).join('') + '</ul></details>';
     }).join('');
     var deptOpts = DEPTS.map(function (d) { return '<option value="' + d.id + '">' + d.name + '</option>'; }).join('');
+    var pl = people().sort(function (a, b) { return a.name.localeCompare(b.name, 'vi'); });
+    var peopleHtml = pl.length ? '<ul class="cat">' + pl.map(function (p) {
+      return '<li><span>' + esc(p.name) + '<span class="co">' + esc(loginEmail(p.id)) + ' · ' + (p.registered ? deptOf(p.dept).short + (p.guest ? ' · thỉnh giảng' : '') : 'chưa đăng nhập') + '</span></span>' +
+        (R[p.id] && !p.registered ? '<button class="btn ghost small" type="button" data-act="delname" data-id="' + esc(p.id) + '">Xóa</button>' : '') + '</li>';
+    }).join('') + '</ul>' : '';
     $('#main').innerHTML =
       '<section class="panel"><div class="panel-h"><h2>Thời hạn nhập · Học kỳ ' + S.hk + ', ' + S.year + '</h2></div><div class="body">' +
       '<div class="dates"><label class="field"><span>Mở nhập từ</span><input type="date" id="dOpen" value="' + esc(s.open || '') + '"></label><label class="field"><span>Khóa sau ngày</span><input type="date" id="dClose" value="' + esc(s.close || '') + '"></label></div>' +
       '<div class="btnrow">' + (st === 'open' ? '<button class="btn ghost" data-act="force" data-v="locked">Khóa ngay</button>' : '<button class="btn" data-act="force" data-v="open">Mở nhập ngay</button>') +
       (s.force ? '<button class="btn ghost" data-act="force" data-v="">Theo ngày đã đặt</button>' : '') + '</div>' +
       '<p class="hint">Chọn cả hai ngày thì trang tự mở và khóa theo ngày. Hết hạn thì mọi người chỉ xem được.</p></div></section>' +
+      '<section class="panel"><div class="panel-h"><h2>Danh sách thầy cô</h2></div><div class="body">' + peopleHtml +
+      '<form data-act="addname" class="body" style="padding:0"><h3 class="sect-h">Thêm tên thầy cô</h3>' +
+      '<label class="field"><span>Họ tên</span><input type="text" id="rName" maxlength="60"></label>' +
+      '<p class="err" id="rErr"></p><div class="btnrow"><button class="btn" type="submit">Thêm tên</button></div></form>' +
+      '<p class="note">Thầy cô quên mật khẩu: vào Firebase > Authentication > Users, tìm đúng địa chỉ đăng nhập ghi bên trên, bấm dấu ba chấm > Delete account. Sau đó thầy cô chọn tên, bấm "Quên mật khẩu" và tạo mật khẩu mới. Các môn đã nhập vẫn còn.</p></div></section>' +
       '<section class="panel"><div class="panel-h"><h2>Danh mục môn học</h2></div><div class="body">' + cat +
       '<form data-act="addcourse" class="body" style="padding:0"><h3 class="sect-h">Thêm môn vào danh mục</h3>' +
       '<label class="field"><span>Tên môn</span><input type="text" id="aName" maxlength="80"></label>' +
@@ -501,14 +549,9 @@ const db = getFirestore(app);
         S.open[id] = open; el.setAttribute('aria-expanded', open);
         el.parentNode.querySelector('.detail').hidden = !open;
       }
-      else if (act === 'mode') { S.au.mode = el.getAttribute('data-v'); S.au.err = ''; S.au.info = ''; render(); }
+      else if (act === 'mode') { var m = el.getAttribute('data-v'); S.au.mode = m; S.au.err = ''; S.au.pw = ''; S.au.pw2 = ''; render(); }
       else if (act === 'logout') { await signOut(auth); }
-      else if (act === 'forgot') {
-        var em = S.au.email.trim();
-        if (!em) { S.au.err = 'Nhập email trước, rồi bấm "Quên mật khẩu".'; S.au.info = ''; return render(); }
-        await sendPasswordResetEmail(auth, em);
-        S.au.err = ''; S.au.info = 'Đã gửi email đặt lại mật khẩu tới ' + em + '. Kiểm tra cả thư mục thư rác.'; render();
-      }
+      else if (act === 'delname') { await deleteDoc(doc(db, 'roster', id)); }
       else if (act === 'del') {
         if (statusOf() !== 'open') return;
         await deleteDoc(doc(db, 'assignments', id));
@@ -518,7 +561,7 @@ const db = getFirestore(app);
         var o = {}; if (s.open) o.open = s.open; if (s.close) o.close = s.close; if (v) o.force = v;
         await setDoc(doc(db, 'sems', skey()), o);
       }
-    } catch (err) { if (act === 'forgot') { S.au.err = authMsg(err); S.au.info = ''; render(); } else toast(authMsg(err)); }
+    } catch (err) { toast(authMsg(err)); }
   });
 
   main.addEventListener('input', function (e) {
@@ -526,7 +569,6 @@ const db = getFirestore(app);
     if (el.id === 'uEmail') S.au.email = el.value;
     else if (el.id === 'uPw') S.au.pw = el.value;
     else if (el.id === 'uPw2') S.au.pw2 = el.value;
-    else if (el.id === 'uName') S.au.name = el.value;
     else if (el.id === 'cQ') {
       S.d.q = el.value; syncDraftCourse();
       $('#cSel').innerHTML = courseOptions(); $('#cCr').innerHTML = crOptions(); $('#calc').innerHTML = calcText();
@@ -539,7 +581,8 @@ const db = getFirestore(app);
   main.addEventListener('change', async function (e) {
     var el = e.target, act = el.getAttribute('data-act');
     try {
-      if (el.id === 'uDept') S.au.dept = el.value;
+      if (el.id === 'uSlug') { var pp = personOf(el.value); S.au.slug = el.value; S.au.mode = pp && pp.registered ? 'login' : 'create'; S.au.err = ''; S.au.pw = ''; S.au.pw2 = ''; render(); }
+      else if (el.id === 'uDept') S.au.dept = el.value;
       else if (el.id === 'uGuest') S.au.guest = el.checked;
       else if (act === 'pick') {
         if (el.id === 'cSel') S.d.c = el.value;
@@ -565,38 +608,55 @@ const db = getFirestore(app);
     var act = e.target.getAttribute('data-act'), a = S.au;
     try {
       if (act === 'auth') {
-        var email = a.email.trim();
-        if (!email || !a.pw) { a.err = 'Nhập email và mật khẩu.'; a.info = ''; return render(); }
-        if (a.mode === 'register') {
-          var nm = a.name.trim().replace(/\s+/g, ' ');
-          if (!nm) { a.err = 'Nhập họ tên thầy cô.'; return render(); }
+        if (a.mode === 'admin') {
+          if (!a.email.trim() || !a.pw) { a.err = 'Nhập email và mật khẩu.'; return render(); }
+          a.busy = true; a.err = ''; render();
+          try { await signInWithEmailAndPassword(auth, a.email.trim(), a.pw); S.au = freshAu(); }
+          catch (err) { a.busy = false; a.err = authMsg(err); a.pw = ''; }
+          return render();
+        }
+        var pr = personOf(a.slug);
+        if (!pr) { a.err = 'Chọn tên thầy cô trước.'; return render(); }
+        if (!a.pw) { a.err = 'Nhập mật khẩu.'; return render(); }
+        if (a.mode !== 'login') {
           if (a.pw.length < 6) { a.err = 'Mật khẩu cần ít nhất 6 ký tự.'; return render(); }
           if (a.pw !== a.pw2) { a.err = 'Hai lần nhập mật khẩu chưa giống nhau.'; return render(); }
         }
-        a.busy = true; a.err = ''; a.info = ''; render();
+        a.busy = true; a.err = ''; render();
         try {
-          if (a.mode === 'register') {
-            var cred = await createUserWithEmailAndPassword(auth, email, a.pw);
-            await setDoc(doc(db, 'teachers', cred.user.uid), { name: nm, dept: a.dept, guest: !!a.guest });
+          if (a.mode === 'login') {
+            await signInWithEmailAndPassword(auth, loginEmail(a.slug), a.pw);
           } else {
-            await signInWithEmailAndPassword(auth, email, a.pw);
+            await createUserWithEmailAndPassword(auth, loginEmail(a.slug), a.pw);
+            if (a.mode === 'create' || !pr.registered) await setDoc(doc(db, 'teachers', a.slug), { name: pr.name, dept: a.dept, guest: !!a.guest });
           }
-          S.au = { mode: 'login', email: '', pw: '', pw2: '', name: '', dept: 'han', guest: false, err: '', info: '', busy: false };
-        } catch (err) { a.busy = false; a.err = authMsg(err); a.pw = ''; a.pw2 = ''; }
+          S.au = freshAu();
+        } catch (err) {
+          a.busy = false; a.pw = ''; a.pw2 = '';
+          if (err && err.code === 'auth/email-already-in-use') {
+            a.err = a.mode === 'create' ? 'Tên này đã có mật khẩu. Hãy nhập mật khẩu để vào.' : 'Khoa chưa xóa mật khẩu cũ của thầy cô. Nhờ khoa xử lý rồi thử lại.';
+            if (a.mode === 'create') a.mode = 'login';
+          } else a.err = authMsg(err);
+        }
         render();
       } else if (act === 'profile') {
-        var nm2 = a.name.trim().replace(/\s+/g, ' ');
-        if (!nm2) { a.err = 'Nhập họ tên thầy cô.'; return render(); }
-        await setDoc(doc(db, 'teachers', S.uid), { name: nm2, dept: a.dept, guest: !!a.guest });
+        var p2 = personOf(S.key);
+        await setDoc(doc(db, 'teachers', S.key), { name: p2 ? p2.name : S.key, dept: a.dept, guest: !!a.guest });
         a.err = '';
+      } else if (act === 'addname') {
+        var nn = $('#rName').value.trim().replace(/\s+/g, ' '), kk = slug(nn);
+        if (!kk) { $('#rErr').textContent = 'Nhập họ tên.'; return; }
+        if (personOf(kk)) { $('#rErr').textContent = 'Tên này đã có trong danh sách.'; return; }
+        await setDoc(doc(db, 'roster', kk), { name: nn });
+        $('#rName').value = '';
       } else if (act === 'add') {
-        if (statusOf() !== 'open' || !S.uid) return;
+        if (statusOf() !== 'open' || !S.key) return;
         var d = S.d, p = Math.round(Number(d.p));
         if (!d.c) { S.err = 'Chọn một môn trước.'; return render(); }
         if (!(p >= 1 && p <= 100)) { S.err = 'Tỷ lệ giờ dạy cần từ 1 đến 100.'; return render(); }
         S.err = '';
         for (var i = 0; i < Number(d.nl); i++) {
-          await addDoc(collection(db, 'assignments'), { sem: key(), tid: S.uid, c: d.c, cr: Number(d.cr), p: p });
+          await addDoc(collection(db, 'assignments'), { sem: key(), tid: S.key, c: d.c, cr: Number(d.cr), p: p });
         }
         d.nl = 1; d.p = 100;
       } else if (act === 'addcourse') {
@@ -616,14 +676,17 @@ const db = getFirestore(app);
   render();
   var onErr = function (err) { S.dbErr = (err && err.code) || 'unavailable'; render(); };
   onAuthStateChanged(auth, function (u) {
-    S.authReady = true; S.uid = u ? u.uid : null;
-    S.isAdmin = !!u && ADMIN_EMAILS.some(function (m) { return m.toLowerCase() === (u.email || '').toLowerCase(); });
+    var em = u ? (u.email || '').toLowerCase() : '';
+    S.authReady = true; S.signedIn = !!u;
+    S.key = em.slice(-(DOMAIN.length + 1)) === '@' + DOMAIN ? em.slice(0, -(DOMAIN.length + 1)) : null;
+    S.isAdmin = !!u && ADMIN_EMAILS.some(function (m) { return m.toLowerCase() === em; });
     if (!u) { S.au.pw = ''; S.au.pw2 = ''; }
     render();
   });
   onSnapshot(collection(db, 'teachers'), function (snap) { T = {}; snap.docs.forEach(function (d) { T[d.id] = d.data(); }); S.teachersLoaded = true; S.dbErr = ''; onData(); }, onErr);
   onSnapshot(collection(db, 'assignments'), function (snap) { A = snap.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); }); onData(); }, onErr);
   onSnapshot(collection(db, 'customCourses'), function (snap) { X = snap.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); }); onData(); }, onErr);
+  onSnapshot(collection(db, 'roster'), function (snap) { R = {}; snap.docs.forEach(function (d) { R[d.id] = d.data(); }); onData(); }, onErr);
   onSnapshot(collection(db, 'sems'), function (snap) { SEM = {}; snap.docs.forEach(function (d) { SEM[d.id] = d.data(); }); onData(); }, onErr);
 })();
 </script>
