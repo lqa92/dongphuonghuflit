@@ -262,7 +262,7 @@ body { padding:0; }
   <header class="top">
     <div>
       <h1>Quản lý giờ dạy</h1>
-      <p class="sub">Giảng viên Khoa Ngôn ngữ và Văn hoá Phương Đông</p>
+      <p class="sub">Trường Đại học Ngoại ngữ - Tin học TP.HCM<br>Khoa Ngôn ngữ và Văn hoá Phương Đông</p>
     </div>
     <div class="filters">
       <label class="f">Năm học<select id="fYear"></select></label>
@@ -526,7 +526,7 @@ const db = getFirestore(app);
       '<p class="err" id="uErr">' + esc(a.err) + '</p>' +
       '<div class="btnrow"><button class="btn" type="submit"' + (!a.slug || a.busy ? ' disabled' : '') + '>' + (a.busy ? 'Đang xử lý...' : btn) + '</button>' +
       '</div>' + '<p class="hint">Thầy cô cần cấp lại mật khẩu vui lòng liên hệ thầy Quốc An.</p>' +
-      '<p class="hint">Mật khẩu chỉ để thầy cô khác không sửa được phần của bạn. Đừng dùng mật khẩu của email hay ngân hàng.</p>' +
+      '<p class="hint">Mật khẩu chỉ để người khác không sửa được phần của mình. Thầy cô đừng dùng mật khẩu của email hay ngân hàng.</p>' +
       '<p class="hint"><button class="linkbtn" type="button" data-act="mode" data-v="admin">Đăng nhập quản trị</button></p></form>';
   }
   function renderProfile() {
@@ -572,7 +572,7 @@ const db = getFirestore(app);
           '<span class="ctl"><label class="pct"><input type="number" min="1" max="100" value="' + a.p + '" data-act="edit" data-id="' + esc(a.id) + '" aria-label="Tỷ lệ giờ dạy (%)">%</label><button class="x" type="button" data-act="del" data-id="' + esc(a.id) + '" aria-label="Xóa dòng này">×</button></span>' :
           '<span class="ctl ro">' + fmt(tiet(a)) + ' tiết</span>';
         return '<li><span class="nmc"><span>' + esc(cc ? cc.name : '(môn đã xóa)') + '</span><span class="sm">' + a.cr + ' TC · ' + fmt(tiet(a)) + ' tiết' + (a.p < 100 ? ' (' + a.p + '%)' : '') + '</span></span>' + ctl + '</li>';
-      }).join('') + '</ul><div class="mine-total"><span>Tổng số lớp học phần</span><span class="v">' + mine.length + ' lớp</span></div><div class="mine-total"><span>Tổng của thầy cô</span><span class="v">' + fmt(total) + ' tiết</span></div>';
+      }).join('') + '</ul><div class="mine-total"><span>Tổng số lớp học phần</span><span class="v">' + mine.length + ' lớp</span></div><div class="mine-total"><span>Tổng số tiết</span><span class="v">' + fmt(total) + ' tiết</span></div>';
 
     var mgr = !S.isManager ? '' :
       '<section class="panel"><div class="panel-h"><h2>Thêm giảng viên vào danh sách</h2></div><div class="body">' +
