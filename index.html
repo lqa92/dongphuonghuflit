@@ -488,7 +488,7 @@ const db = getFirestore(app);
     var deptOpts = DEPTS.map(function (d) { return '<option value="' + d.id + '">' + d.name + '</option>'; }).join('');
     var pl = people().sort(function (a, b) { return a.name.localeCompare(b.name, 'vi'); });
     var peopleHtml = pl.length ? '<ul class="cat">' + pl.map(function (p) {
-      return '<li><span>' + esc(p.name) + '<span class="co">' + (p.registered ? deptOf(p.dept).short + (p.guest ? ' · thỉnh giảng' : '') : 'chưa đăng nhập') + '</span></span>' +
+      return '<li><span>' + esc(p.name) + ' (' + (p.registered ? deptOf(p.dept).short + (p.guest ? ', thỉnh giảng' : '') : 'chưa đăng nhập') + ')</span>' +
         (R[p.id] && !p.registered ? '<button class="btn ghost small" type="button" data-act="delname" data-id="' + esc(p.id) + '">Xóa</button>' : '') + '</li>';
     }).join('') + '</ul>' : '';
     $('#main').innerHTML =
