@@ -252,6 +252,11 @@ const db = getFirestore(app);
 
   var T = {}, A = [], X = [], SEM = {}, R = {};
   var tiet = function (a) { return a.cr * PER_CR * a.p / 100; };
+  /* Xếp theo tên môn ABC, rồi theo tín chỉ, rồi tỷ lệ */
+  var byCourse = function (x, y) {
+    var cx = cById(x.c), cy = cById(y.c);
+    return (cx ? cx.name : '').localeCompare(cy ? cy.name : '', 'vi', { sensitivity: 'base', numeric: true }) || x.cr - y.cr || y.p - x.p;
+  };
   var slug = function (s) {
     return s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'd').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   };
@@ -336,6 +341,7 @@ const db = getFirestore(app);
           if (!groups[g]) { groups[g] = { a: a, n: 0, t: 0 }; order.push(g); }
           groups[g].n++; groups[g].t += tiet(a);
         });
+        order.sort(function (x, y) { return byCourse(groups[x].a, groups[y].a); });
         var det = order.length ? '<ul>' + order.map(function (g) {
           var o = groups[g], c = cById(o.a.c);
           return '<li><span>' + esc(c ? c.name : '(môn đã xóa)') + '<span class="co">' + o.a.cr + ' tín chỉ' + (o.n > 1 ? ' · ' + o.n + ' lớp' : '') + (o.a.p < 100 ? ' · tỷ lệ ' + o.a.p + '%' : '') + '</span></span><span class="t">' + fmt(o.t) + ' tiết</span></li>';
@@ -455,7 +461,7 @@ const db = getFirestore(app);
       '<div class="btnrow"><button class="btn" type="submit"' + (c ? '' : ' disabled') + '>Thêm môn</button></div></form>' :
       '<p class="note">' + ((st === 'soon' || st === 'unset') ? 'Chưa đến thời gian nhập. Thầy cô quay lại khi khoa mở nhập.' : 'Học kỳ này đã khóa nên không thêm hoặc sửa được. Thầy cô vẫn xem được các môn đã nhập bên dưới.') + '</p>';
 
-    var mine = A.filter(function (a) { return a.sem === k && a.tid === S.key; });
+    var mine = A.filter(function (a) { return a.sem === k && a.tid === S.key; }).sort(byCourse);
     var total = mine.reduce(function (s, a) { return s + tiet(a); }, 0);
     var list = !mine.length ? '<p class="hint">Chưa có môn nào trong học kỳ này.</p>' :
       '<ul class="mine">' + mine.map(function (a) {
@@ -464,7 +470,7 @@ const db = getFirestore(app);
           '<span class="ctl"><label class="pct"><input type="number" min="1" max="100" value="' + a.p + '" data-act="edit" data-id="' + esc(a.id) + '" aria-label="Tỷ lệ giờ dạy (%)">%</label><button class="x" type="button" data-act="del" data-id="' + esc(a.id) + '" aria-label="Xóa dòng này">×</button></span>' :
           '<span class="ctl ro">' + fmt(tiet(a)) + ' tiết</span>';
         return '<li><span class="nmc"><span>' + esc(cc ? cc.name : '(môn đã xóa)') + '</span><span class="sm">' + a.cr + ' TC · ' + fmt(tiet(a)) + ' tiết' + (a.p < 100 ? ' (' + a.p + '%)' : '') + '</span></span>' + ctl + '</li>';
-      }).join('') + '</ul><div class="mine-total"><span>Tổng của thầy cô</span><span class="v">' + fmt(total) + ' tiết</span></div>';
+      }).join('') + '</ul><div class="mine-total"><span>Tổng số lớp học phần</span><span class="v">' + mine.length + ' lớp</span></div><div class="mine-total"><span>Tổng của thầy cô</span><span class="v">' + fmt(total) + ' tiết</span></div>';
 
     $('#main').innerHTML = head +
       '<div class="hello"><span>Đang nhập với tên <b>' + esc(me.name) + '</b></span><button class="btn ghost small" type="button" data-act="logout">Đăng xuất</button></div>' +
