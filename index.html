@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quản lý giờ dạy</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: một cột, bộ lọc năm học/học kỳ dùng chung, ba tab (Tổng hợp, Nhập môn dạy, Quản trị). */
+:root {
+  --bg: #f1f4f8;
+  --surface: #ffffff;
+  --surface-2: #f6f8fb;
+  --ink: #152033;
+  --muted: #5a6a7f;
+  --line: #dbe2ea;
+  --accent: #1f3a5f;
+  --accent-ink: #ffffff;
+  --han: #2d6da3;
+  --nhat: #c2455a;
+  --viet: #3b8a5a;
+  --ok-bg: #e3f3e9; --ok-ink: #1d6a3b;
+  --soon-bg: #fdf0d5; --soon-ink: #8a5a00;
+  --lock-bg: #e8ecf1; --lock-ink: #4b5a6e;
+  --danger: #b3342f;
+  --font-body: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-num: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1520; --surface: #162130; --surface-2: #1b2839; --ink: #e8edf4; --muted: #93a3b7; --line: #263548;
+    --accent: #9cbdea; --accent-ink: #0e1520;
+    --han: #6ba8dd; --nhat: #e47e90; --viet: #70c18d;
+    --ok-bg: #173a27; --ok-ink: #8fdaa9; --soon-bg: #433210; --soon-ink: #f2c46a; --lock-bg: #243346; --lock-ink: #a9b8cb;
+    --danger: #ef8780;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1520; --surface: #162130; --surface-2: #1b2839; --ink: #e8edf4; --muted: #93a3b7; --line: #263548;
+  --accent: #9cbdea; --accent-ink: #0e1520;
+  --han: #6ba8dd; --nhat: #e47e90; --viet: #70c18d;
+  --ok-bg: #173a27; --ok-ink: #8fdaa9; --soon-bg: #433210; --soon-ink: #f2c46a; --lock-bg: #243346; --lock-ink: #a9b8cb;
+  --danger: #ef8780;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  padding-block: 20px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+.top { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: flex-end; justify-content: space-between; }
+h1 { margin: 0; font-size: 26px; line-height: 1.2; font-weight: 700; text-wrap: balance; }
+.sub { margin: 4px 0 0; color: var(--muted); }
+.filters { display: flex; gap: 10px; }
+label.f { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--muted); }
+select, input[type="number"], input[type="text"], input[type="date"], input[type="search"] {
+  font: inherit; font-size: 16px; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-height: 42px; min-width: 0; width: 100%;
+}
+.filters select { width: auto; }
+select:disabled, input:disabled { opacity: .6; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 14px; border-radius: 10px; font-size: 14px; }
+.status b { font-weight: 600; }
+.status.open { background: var(--ok-bg); color: var(--ok-ink); }
+.status.soon { background: var(--soon-bg); color: var(--soon-ink); }
+.status.locked { background: var(--lock-bg); color: var(--lock-ink); }
+
+.tabs { display: flex; gap: 4px; padding: 4px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; }
+.tab { flex: 1; font: inherit; font-weight: 600; font-size: 14px; padding: 9px 8px; min-height: 40px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); cursor: pointer; }
+.tab[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.panel + .panel { margin-top: 14px; }
+.panel-h { padding: 14px 16px; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
+.panel-h h2 { margin: 0; font-size: 16px; font-weight: 700; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: inherit; font-size: 13px; font-weight: 600; padding: 6px 12px; min-height: 34px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+.facts { display: flex; flex-wrap: wrap; gap: 6px 22px; padding: 12px 16px; background: var(--surface-2); border-bottom: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+.facts b { color: var(--ink); font-family: var(--font-num); font-weight: 600; font-size: 14px; }
+
+.row { border-bottom: 1px solid var(--line); --c: var(--accent); }
+.row[data-dept="han"] { --c: var(--han); }
+.row[data-dept="nhat"] { --c: var(--nhat); }
+.row[data-dept="viet"] { --c: var(--viet); }
+.row-btn {
+  all: unset; box-sizing: border-box; width: 100%; cursor: pointer; padding: 12px 16px;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "who num" "bar bar"; gap: 8px 12px; align-items: center;
+}
+.row-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.row-btn:hover { background: var(--surface-2); }
+.who { grid-area: who; min-width: 0; display: flex; flex-direction: column; }
+.nm { font-weight: 600; overflow-wrap: anywhere; }
+.meta { font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex: none; }
+.guest { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; background: var(--soon-bg); color: var(--soon-ink); }
+.bar { grid-area: bar; position: relative; height: 8px; border-radius: 4px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); }
+.fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--c); }
+.tick { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink); opacity: .55; }
+.num { grid-area: num; font-family: var(--font-num); font-weight: 600; font-size: 20px; font-variant-numeric: tabular-nums; text-align: right; }
+.num small { font-size: 12px; color: var(--muted); font-family: var(--font-body); font-weight: 500; margin-left: 3px; }
+.num.none { color: var(--muted); font-size: 16px; }
+@media (min-width: 640px) {
+  .row-btn { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr) 6.5rem; grid-template-areas: "who bar num"; gap: 16px; }
+}
+.detail { padding: 2px 16px 14px; background: var(--surface-2); border-top: 1px dashed var(--line); }
+.detail ul { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.detail li { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
+.detail li span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.detail .co { display: block; font-size: 12px; color: var(--muted); }
+.detail .t { font-family: var(--font-num); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.total-row { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 16px; font-weight: 600; }
+.total-row .num { font-size: 20px; }
+.legend { padding: 0 16px 14px; font-size: 12px; color: var(--muted); }
+.empty { padding: 28px 16px; text-align: center; color: var(--muted); }
+
+.body { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field > span { font-size: 13px; font-weight: 600; color: var(--muted); }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: end; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: end; }
+@media (max-width: 520px) { .grid2, .grid3 { grid-template-columns: minmax(0, 1fr); } }
+.check { display: flex; align-items: center; gap: 10px; min-height: 42px; font-size: 14px; }
+.check input { width: 20px; height: 20px; flex: none; }
+.btn { font: inherit; font-weight: 600; font-size: 15px; min-height: 42px; padding: 8px 18px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); cursor: pointer; }
+.btn.ghost { background: transparent; color: var(--accent); }
+.btn.small { min-height: 36px; padding: 6px 14px; font-size: 14px; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.hint { font-size: 13px; color: var(--muted); margin: 0; }
+.err { font-size: 13px; color: var(--danger); margin: 0; min-height: 1em; }
+.sect-h { margin: 0; font-size: 14px; font-weight: 700; }
+.calc { font-size: 14px; padding: 10px 12px; border-radius: 8px; background: var(--surface-2); margin: 0; }
+.calc b { font-family: var(--font-num); font-weight: 600; }
+.mine { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 10px; }
+.mine li { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.mine li:last-child { border-bottom: 0; }
+.mine .nmc { min-width: 0; overflow-wrap: anywhere; display: flex; flex-direction: column; }
+.mine .sm { font-size: 12px; color: var(--muted); font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.mine .ctl { display: flex; align-items: center; gap: 8px; flex: none; }
+.mine .pct { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--muted); }
+.mine input[type="number"] { width: 4.8rem; text-align: right; font-family: var(--font-num); }
+.x { font: inherit; width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--danger); cursor: pointer; font-size: 18px; line-height: 1; }
+.mine .ro { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.mine-total { display: flex; justify-content: space-between; font-weight: 600; padding-top: 4px; }
+.mine-total .v { font-family: var(--font-num); }
+.dates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.btnrow { display: flex; flex-wrap: wrap; gap: 8px; }
+.cat { margin: 0; padding: 0; list-style: none; border: 1px solid var(--line); border-radius: 10px; max-height: 320px; overflow-y: auto; }
+.cat li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 12px; border-bottom: 1px solid var(--line); font-size: 14px; }
+.cat li:last-child { border-bottom: 0; }
+.cat .t { font-family: var(--font-num); white-space: nowrap; color: var(--muted); }
+details.dp > summary { cursor: pointer; font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px; min-height: 36px; }
+details.dp[open] > summary { margin-bottom: 8px; }
+.note { font-size: 13px; color: var(--muted); padding: 10px 12px; background: var(--surface-2); border-radius: 8px; margin: 0; }
+@media (prefers-reduced-motion: no-preference) { .fill { transition: width .25s ease; } }
+.hello { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); max-width: calc(100% - 32px); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: 14px; z-index: 20; }
+#status { display: flex; flex-direction: column; gap: 8px; }
+</style>
+
+<style>body{margin:0}[hidden]{display:none!important}</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Quản lý giờ dạy</h1>
+      <p class="sub">Giảng viên Khoa Ngôn ngữ và Văn hoá Phương Đông</p>
+    </div>
+    <div class="filters">
+      <label class="f">Năm học<select id="fYear"></select></label>
+      <label class="f">Học kỳ<select id="fHk"></select></label>
+    </div>
+  </header>
+
+  <div id="status"></div>
+
+  <nav class="tabs" role="tablist" aria-label="Chức năng">
+    <button class="tab" role="tab" data-tab="sum">Tổng hợp</button>
+    <button class="tab" role="tab" data-tab="enter">Nhập môn dạy</button>
+    <button class="tab" role="tab" data-tab="admin" id="adminTab" hidden>Quản trị</button>
+  </nav>
+
+  <main id="main"></main>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { getFirestore, collection, doc, onSnapshot, addDoc, setDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDXB8Bak4bTCLsZbVGmxbdAOiYfFMXxdOw",
+  authDomain: "dong-aa364.firebaseapp.com",
+  projectId: "dong-aa364",
+  storageBucket: "dong-aa364.firebasestorage.app",
+  messagingSenderId: "109564044579",
+  appId: "1:109564044579:web:bae67a5ad8ea097ca49896"
+};
+/* Email của người quản trị (cô phó khoa). Phải giống email trong Rules của Firestore. */
+const ADMIN_EMAILS = ['quocanluong@gmail.com'];
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+(function () {
+  var $ = function (s) { return document.querySelector(s); };
+  var esc = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); };
+  var fmt = function (n) { return Number(n).toLocaleString('vi-VN', { maximumFractionDigits: 1 }); };
+  var fd = function (iso) { return iso.split('-').reverse().join('/'); };
+  var today = function () { return new Date().toLocaleDateString('en-CA'); };
+
+  var DEPTS = [
+    { id: 'han', name: 'Tiếng Hàn', short: 'Hàn' },
+    { id: 'nhat', name: 'Tiếng Nhật', short: 'Nhật' },
+    { id: 'viet', name: 'Việt Nam học', short: 'Việt Nam học' }
+  ];
+  var deptOf = function (id) { return DEPTS.filter(function (d) { return d.id === id; })[0] || DEPTS[0]; };
+
+  /* Danh mục môn từ file của khoa: [bộ môn, tên môn, [số tín chỉ có thể chọn]] */
+  var RAW = [["han", "Đọc tiếng Hàn 1", [2, 3]], ["han", "Nghe tiếng Hàn 1", [2, 3]], ["han", "Nói tiếng Hàn 1", [2, 3]], ["han", "Viết tiếng Hàn 1", [2, 3]], ["han", "Đọc tiếng Hàn 2", [2, 3]], ["han", "Nghe tiếng Hàn 2", [2, 3]], ["han", "Nói tiếng Hàn 2", [2, 3]], ["han", "Viết tiếng Hàn 2", [2, 3]], ["han", "Đọc tiếng Hàn 3", [2, 3]], ["han", "Nghe tiếng Hàn 3", [2, 3]], ["han", "Nói tiếng Hàn 3", [2, 3]], ["han", "Viết tiếng Hàn 3", [2, 3]], ["han", "Đọc tiếng Hàn 4", [2, 3]], ["han", "Nghe tiếng Hàn 4", [2, 3]], ["han", "Nói tiếng Hàn 4", [2, 3]], ["han", "Viết tiếng Hàn 4", [2, 3]], ["han", "Lịch sử Korea", [2, 3]], ["han", "Văn hóa Korea", [2]], ["han", "Đàm thoại văn hóa, xã hội Hàn Quốc 1", [3]], ["han", "Thực hành văn bản tiếng Hàn 1", [3]], ["han", "Nghe tiếng Hàn nâng cao", [3]], ["han", "Đọc tiếng Hàn nâng cao", [3]], ["han", "Nghe tin thời sự Hàn Quốc", [3]], ["han", "Đàm thoại văn hóa, xã hội Hàn Quốc 2", [3]], ["han", "Thực hành văn bản tiếng Hàn 2", [3]], ["han", "Văn học Korea", [2, 3]], ["han", "Kỹ năng đọc hiểu văn bản tiếng Hàn", [3]], ["han", "Tiếng Hàn thương mại", [2, 3]], ["han", "Văn hóa doanh nghiệp Hàn Quốc", [3]], ["han", "Kỹ năng thuyết trình tiếng Hàn nâng cao", [3]], ["han", "Nói tiếng Hàn nâng cao", [3]], ["han", "Viết tiếng Hàn nâng cao", [3]], ["han", "Bản tin thời sự Hàn Quốc", [3]], ["han", "Seminar chuyên ngành Hàn Quốc học", [3]], ["han", "Ứng dụng công nghệ vào soạn thảo văn bản tiếng Hàn", [3]], ["han", "Địa lý – Kinh tế Hàn Quốc", [3]], ["han", "Văn hoá – Xã hội Hàn Quốc", [3]], ["han", "Thuyết trình tiếng Hàn ứng dụng đa phương tiện", [3]], ["han", "Tổng quan ngành Ngôn ngữ Hàn Quốc", [2]], ["han", "Thực hành tiếng Hàn 1", [2]], ["han", "Thực hành tiếng Hàn 2", [2]], ["han", "Ngữ âm - âm vị học tiếng Hàn", [2, 3]], ["han", "Địa lý Hàn Quốc", [2]], ["han", "Hình thái học tiếng Hàn", [2]], ["han", "Đọc tiếng Hàn 5", [2]], ["han", "Nghe tiếng Hàn 5", [2]], ["han", "Nói tiếng Hàn 5", [2]], ["han", "Viết tiếng Hàn 5", [2]], ["han", "Biên - phiên dịch tiếng Hàn cơ bản", [2]], ["han", "Soạn thảo văn bản tiếng Hàn", [2]], ["han", "Nhập môn giảng dạy tiếng Hàn", [2, 3]], ["han", "Đọc tiếng Hàn 6", [2]], ["han", "Nghe tiếng Hàn 6", [2]], ["han", "Nói tiếng Hàn 6", [2]], ["han", "Viết tiếng Hàn 6", [2]], ["han", "Cú pháp học tiếng Hàn", [2, 3]], ["han", "Tiếng Hàn thời sự", [2]], ["han", "Phương pháp giảng dạy tiếng Hàn", [2, 3]], ["han", "Giao tiếp liên văn hóa Việt - Hàn", [2]], ["han", "Tiếng Hàn công sở", [2, 3]], ["han", "Tiếng Hàn du lịch", [2, 3]], ["han", "Đọc tiếng Hàn 7", [2]], ["han", "Nghe tiếng Hàn 7", [2]], ["han", "Nói tiếng Hàn 7", [2]], ["han", "Viết tiếng Hàn 7", [2]], ["han", "Ngữ nghĩa học tiếng Hàn", [2]], ["han", "Biên - phiên dịch tiếng Hàn nâng cao", [2]], ["han", "Thực hành giảng dạy tiếng Hàn", [2, 3]], ["han", "Thuyết minh tuyến điểm Hàn - Việt", [2]], ["han", "Kỹ năng thuyết trình tiếng Hàn", [3]], ["han", "Ứng dụng công nghệ trong dịch thuật tiếng Hàn", [3]], ["han", "Từ vựng - Ngữ nghĩa học tiếng Hàn", [3]], ["han", "Kỹ năng dịch tiếng Hàn nâng cao", [3]], ["han", "Văn hoá Xã hội Hàn Quốc", [3]], ["han", "Biên phiên dịch chuyên ngành", [3]], ["han", "Thuyết minh tuyến điểm Việt - Hàn", [3]], ["han", "E-learning trong giảng dạy tiếng Hàn", [3]], ["han", "Tiếng Hàn 1", [3]], ["han", "Tiếng Hàn 2", [3]], ["han", "Tiếng Hàn 3", [3]], ["han", "Tiếng Hàn 4", [3]], ["nhat", "Tiếng Nhật 1", [3]], ["nhat", "Tiếng Nhật 2", [3]], ["nhat", "Tiếng Nhật 3", [3]], ["nhat", "Nghe tiếng Nhật 1", [3]], ["nhat", "Nghe tiếng Nhật 2", [3]], ["nhat", "Nghe tiếng Nhật 3", [3]], ["nhat", "Nghe tiếng Nhật 4", [3]], ["nhat", "Nghe tiếng Nhật nâng cao", [3]], ["nhat", "Nói tiếng Nhật 1", [3]], ["nhat", "Nói tiếng Nhật 2", [3]], ["nhat", "Nói tiếng Nhật 3", [3]], ["nhat", "Nói tiếng Nhật 4", [3]], ["nhat", "Nói tiếng Nhật nâng cao", [3]], ["nhat", "Đọc tiếng Nhật 1", [3]], ["nhat", "Đọc tiếng Nhật 2", [3]], ["nhat", "Đọc tiếng Nhật 3", [3]], ["nhat", "Đọc tiếng Nhật 4", [3]], ["nhat", "Đọc tiếng Nhật nâng cao", [3]], ["nhat", "Viết tiếng Nhật 1", [3]], ["nhat", "Viết tiếng Nhật 2", [3]], ["nhat", "Viết tiếng Nhật 3", [3]], ["nhat", "Viết tiếng Nhật 4", [3]], ["nhat", "Viết tiếng Nhật nâng cao", [3]], ["nhat", "Bản tin thời sự Nhật Bản", [3]], ["nhat", "Seminar chuyên ngành Nhật Bản học", [3]], ["nhat", "Ứng dụng công nghệ vào soạn thảo văn bản tiếng Nhật", [3]], ["nhat", "Địa lý – Kinh tế Nhật Bản", [3]], ["nhat", "Lịch sử Nhật Bản", [2, 3]], ["nhat", "Văn hoá – Xã hội Nhật Bản", [2, 3]], ["nhat", "Văn học Nhật Bản", [2, 3]], ["nhat", "Văn hoá doanh nghiệp Nhật Bản", [3]], ["nhat", "Thuyết trình tiếng Nhật ứng dụng đa phương tiện", [3]], ["nhat", "Nghe tin thời sự Nhật Bản", [3]], ["nhat", "Đàm thoại văn hóa, xã hội Nhật Bản 1", [3]], ["nhat", "Đàm thoại văn hóa, xã hội Nhật Bản 2", [3]], ["nhat", "Kỹ năng đọc hiểu văn bản tiếng Nhật", [3]], ["nhat", "Thực hành văn bản tiếng Nhật 1", [3]], ["nhat", "Thực hành văn bản tiếng Nhật 2", [3]], ["nhat", "Tiếng Nhật thương mại", [3]], ["nhat", "Kỹ năng thuyết trình tiếng Nhật", [3]], ["viet", "Tổng quan ngành Đông phương học", [2]], ["viet", "Cơ sở văn hóa Việt Nam", [2, 3]], ["viet", "Lịch sử văn minh phương Đông", [2, 3]], ["viet", "Phương pháp luận sáng tạo", [2, 3]], ["viet", "Dẫn luận ngôn ngữ học", [2]], ["viet", "Phương pháp nghiên cứu khoa học", [2, 3]], ["viet", "Tâm lý học đại cương", [2, 3]], ["viet", "Văn hóa tổ chức", [2]], ["viet", "Luật lao động", [2, 3]], ["viet", "Nghiệp vụ quản trị văn phòng và thư ký", [2, 3]], ["viet", "Nghiệp vụ hướng dẫn – tâm lý du lịch", [2, 3]], ["viet", "Tổng quan du lịch", [2]], ["viet", "Địa lý và dân cư ở Đông Á", [2]], ["viet", "Nghệ thuật truyền thống Phương Đông", [2]], ["viet", "Các tổ chức quốc tế & khu vực ở phương Đông", [2]], ["viet", "Xã hội ở các nước Đông Á", [2]], ["viet", "Hệ thống chính trị và pháp luật các nước phương Đông", [2]], ["viet", "Nghiệp vụ PR", [2]], ["viet", "Quản trị nguồn nhân lực", [2]], ["viet", "Nghiệp vụ tổ chức hội nghị, hội họp", [2]], ["viet", "Các vấn đề về dân tộc học và tôn giáo", [2]], ["viet", "Lược sử kiến trúc Mỹ thuật Việt Nam", [2]], ["viet", "Hệ thống tuyến điểm du lịch & luật du lịch", [2]], ["viet", "Cơ sở ngôn ngữ học và tiếng Việt", [3]], ["viet", "Hán tự tổng hợp", [3]], ["viet", "Logic học ứng dụng và tiếng Việt", [3]], ["viet", "Tổng quan du lịch và Luật du lịch", [3]], ["viet", "Nghiệp vụ PR và tổ chức sự kiện", [3]], ["viet", "Hệ thống tuyến điểm du lịch", [3]], ["viet", "Nghiệp vụ hướng dẫn tâm lý du lịch", [2]], ["viet", "Digital Marketing", [3]]];
+  var base = RAW.map(function (r, i) { return { id: 'c' + i, dept: r[0], name: r[1], cr: r[2] }; });
+  var courses = [], courseMap = {};
+  var cById = function (id) { return courseMap[id]; };
+  function rebuildCourses() {
+    courses = base.concat(X.map(function (x) { return { id: x.id, dept: x.dept, name: x.name, cr: x.cr }; }));
+    courses.sort(function (a, b) { return a.name.localeCompare(b.name, 'vi', { sensitivity: 'base', numeric: true }); });
+    courseMap = {}; courses.forEach(function (c) { courseMap[c.id] = c; });
+  }
+  var PER_CR = 15; /* 2 tín chỉ = 30 tiết, 3 tín chỉ = 45 tiết */
+  var YEARS = ['2027–2028', '2026–2027', '2025–2026'];
+  var HKS = [1, 2];
+
+  var T = {}, A = [], X = [], SEM = {};
+  var tiet = function (a) { return a.cr * PER_CR * a.p / 100; };
+  var teacherList = function () {
+    return Object.keys(T).map(function (id) { var t = T[id]; return { id: id, name: t.name, dept: t.dept, guest: !!t.guest }; });
+  };
+
+  var S = { year: '2026–2027', hk: 1, dept: 'all', tab: 'sum', open: {}, err: '', dbErr: '',
+    uid: null, isAdmin: false, authReady: false, teachersLoaded: false,
+    au: { mode: 'login', email: '', pw: '', pw2: '', name: '', dept: 'han', guest: false, err: '', info: '', busy: false },
+    d: { q: '', c: '', cr: 3, nl: 1, p: 100 } };
+  var skey = function () { return S.year.replace('–', '-') + '_' + S.hk; };
+  var key = function () { return skey(); };
+
+  function statusOf() {
+    var s = SEM[skey()];
+    if (!s || (!s.force && (!s.open || !s.close))) return 'unset';
+    if (s.force) return s.force;
+    var t = today();
+    if (t < s.open) return 'soon';
+    if (t <= s.close) return 'open';
+    return 'locked';
+  }
+  function authMsg(e) {
+    var c = e && e.code || '';
+    if (c === 'auth/invalid-credential' || c === 'auth/wrong-password' || c === 'auth/user-not-found') return 'Email hoặc mật khẩu chưa đúng.';
+    if (c === 'auth/email-already-in-use') return 'Email này đã có tài khoản. Chọn "Đăng nhập", hoặc "Quên mật khẩu" nếu cần.';
+    if (c === 'auth/weak-password') return 'Mật khẩu cần ít nhất 6 ký tự.';
+    if (c === 'auth/invalid-email') return 'Email chưa đúng dạng, ví dụ ten@truong.edu.vn.';
+    if (c === 'auth/too-many-requests') return 'Thử quá nhiều lần. Chờ vài phút rồi thử lại.';
+    if (c === 'auth/network-request-failed') return 'Mất kết nối mạng. Kiểm tra mạng rồi thử lại.';
+    if (c === 'auth/operation-not-allowed') return 'Chưa bật đăng nhập bằng Email/Password trong Firebase.';
+    if (c === 'permission-denied') return 'Không có quyền thực hiện. Kiểm tra lại Rules trong Firestore.';
+    return 'Chưa thực hiện được. Thử lại sau ít giây.';
+  }
+
+  function renderBanners() {
+    var h = '';
+    if (S.dbErr) h += '<div class="status locked"><b>Chưa đọc được dữ liệu</b><span>' + esc(S.dbErr === 'permission-denied' ? 'Rules của Firestore chưa đúng hoặc chưa Publish.' : 'Mã lỗi: ' + S.dbErr) + '</span></div>';
+    var st = statusOf(), s = SEM[skey()] || {};
+    if (st === 'open') h += '<div class="status open"><b>Đang mở nhập</b><span>Thầy cô tự nhập đến hết ngày ' + fd(s.close) + '.</span></div>';
+    else if (st === 'soon') h += '<div class="status soon"><b>Chưa mở nhập</b><span>Mở từ ' + fd(s.open) + ' đến ' + fd(s.close) + '.</span></div>';
+    else if (st === 'unset') h += '<div class="status soon"><b>Chưa mở nhập</b><span>Khoa chưa đặt thời hạn nhập cho học kỳ này.</span></div>';
+    else h += '<div class="status locked"><b>Đã khóa</b><span>Học kỳ này chỉ xem, không sửa được. Liên hệ khoa nếu cần chỉnh.</span></div>';
+    $('#status').innerHTML = h;
+  }
+
+  /* ---------- Tổng hợp ---------- */
+  function renderSummary() {
+    var k = key();
+    var rows = teacherList().filter(function (t) { return S.dept === 'all' || (S.dept === 'guest' ? t.guest : t.dept === S.dept); }).map(function (t) {
+      var list = A.filter(function (a) { return a.sem === k && a.tid === t.id; });
+      return { t: t, list: list, total: list.reduce(function (s, a) { return s + tiet(a); }, 0) };
+    });
+    rows.sort(function (a, b) { return b.total - a.total || a.t.name.localeCompare(b.t.name, 'vi'); });
+    var entered = rows.filter(function (r) { return r.total > 0; });
+    var sum = entered.reduce(function (s, r) { return s + r.total; }, 0);
+    var mean = entered.length ? sum / entered.length : 0;
+    var max = Math.max.apply(null, rows.map(function (r) { return r.total; }).concat([1]));
+
+    var chips = '<button class="chip" data-act="dept" data-v="all" aria-pressed="' + (S.dept === 'all') + '">Tất cả</button>' +
+      DEPTS.map(function (d) { return '<button class="chip" data-act="dept" data-v="' + d.id + '" aria-pressed="' + (S.dept === d.id) + '">' + d.name + '</button>'; }).join('') +
+      '<button class="chip" data-act="dept" data-v="guest" aria-pressed="' + (S.dept === 'guest') + '">Thỉnh giảng</button>';
+
+    var body;
+    if (!rows.length) {
+      body = '<div class="empty">Chưa có giảng viên nào. Thầy cô vào tab "Nhập môn dạy" để tạo tài khoản và nhập môn.</div>';
+    } else {
+      body = rows.map(function (r) {
+        var open = !!S.open[r.t.id];
+        var w = r.total / max * 100;
+        var groups = {}, order = [];
+        r.list.forEach(function (a) {
+          var g = a.c + '|' + a.cr + '|' + a.p;
+          if (!groups[g]) { groups[g] = { a: a, n: 0, t: 0 }; order.push(g); }
+          groups[g].n++; groups[g].t += tiet(a);
+        });
+        var det = order.length ? '<ul>' + order.map(function (g) {
+          var o = groups[g], c = cById(o.a.c);
+          return '<li><span>' + esc(c ? c.name : '(môn đã xóa)') + '<span class="co">' + o.a.cr + ' tín chỉ' + (o.n > 1 ? ' · ' + o.n + ' lớp' : '') + (o.a.p < 100 ? ' · tỷ lệ ' + o.a.p + '%' : '') + '</span></span><span class="t">' + fmt(o.t) + ' tiết</span></li>';
+        }).join('') + '</ul>' : '<p class="hint" style="margin-top:8px">Chưa nhập môn nào.</p>';
+        return '<div class="row" data-dept="' + r.t.dept + '">' +
+          '<button class="row-btn" data-act="toggle" data-id="' + esc(r.t.id) + '" aria-expanded="' + open + '">' +
+          '<span class="who"><span class="nm">' + esc(r.t.name) + '</span><span class="meta"><i class="dot"></i>' + deptOf(r.t.dept).short + ' · ' + (r.total ? r.list.length + ' lớp' : 'Chưa nhập') + (r.t.guest ? ' <span class="guest">Thỉnh giảng</span>' : '') + '</span></span>' +
+          '<span class="bar"><span class="fill" style="width:' + w + '%"></span>' + (r.total && mean ? '<span class="tick" style="left:' + (mean / max * 100) + '%"></span>' : '') + '</span>' +
+          (r.total ? '<span class="num">' + fmt(r.total) + '<small>tiết</small></span>' : '<span class="num none">—</span>') +
+          '</button><div class="detail"' + (open ? '' : ' hidden') + '>' + det + '</div></div>';
+      }).join('') +
+      '<div class="total-row"><span>Tổng ' + (S.dept === 'all' ? 'cả khoa' : S.dept === 'guest' ? 'giảng viên thỉnh giảng' : deptOf(S.dept).name) + '</span><span class="num">' + fmt(sum) + '<small>tiết</small></span></div>' +
+      '<div class="legend">Vạch đứng trên thanh là mức trung bình (' + fmt(Math.round(mean)) + ' tiết/người). Bấm vào tên để xem các môn.</div>';
+    }
+
+    $('#main').innerHTML =
+      '<section class="panel"><div class="panel-h"><h2>Số tiết theo giảng viên</h2><div class="chips">' + chips + '</div></div>' +
+      '<div class="facts"><span>Đã nhập <b>' + entered.length + '/' + rows.length + '</b> giảng viên</span><span>Tổng <b>' + fmt(sum) + '</b> tiết</span><span>Trung bình <b>' + fmt(Math.round(mean)) + '</b> tiết/người</span></div>' +
+      body + '</section>';
+  }
+
+  /* ---------- Nhập môn dạy ---------- */
+  function courseOptions() {
+    var q = S.d.q.trim().toLowerCase(), any = false;
+    var html = DEPTS.map(function (d) {
+      var cs = courses.filter(function (c) { return c.dept === d.id && (!q || c.name.toLowerCase().indexOf(q) >= 0); });
+      if (!cs.length) return '';
+      any = true;
+      return '<optgroup label="' + d.name + '">' + cs.map(function (c) { return '<option value="' + esc(c.id) + '"' + (c.id === S.d.c ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('') + '</optgroup>';
+    }).join('');
+    return any ? html : '<option value="">Không có môn phù hợp</option>';
+  }
+  function syncDraftCourse() {
+    var q = S.d.q.trim().toLowerCase();
+    var visible = courses.filter(function (c) { return !q || c.name.toLowerCase().indexOf(q) >= 0; });
+    if (!visible.some(function (c) { return c.id === S.d.c; })) S.d.c = visible.length ? visible[0].id : '';
+    var c = cById(S.d.c);
+    if (c && c.cr.indexOf(Number(S.d.cr)) < 0) S.d.cr = c.cr[c.cr.length - 1];
+  }
+  function crOptions() {
+    var c = cById(S.d.c);
+    return (c ? c.cr : [3]).map(function (n) { return '<option value="' + n + '"' + (Number(S.d.cr) === n ? ' selected' : '') + '>' + n + ' tín chỉ (' + n * PER_CR + ' tiết)</option>'; }).join('');
+  }
+  function calcText() {
+    var d = S.d;
+    if (!cById(d.c)) return '';
+    return d.nl + ' lớp × ' + d.cr + ' tín chỉ (' + d.cr * PER_CR + ' tiết) × ' + d.p + '% = <b>' + fmt(d.cr * PER_CR * d.p / 100 * d.nl) + ' tiết</b>';
+  }
+  function deptFields(prefix) {
+    var a = S.au;
+    return '<div class="grid2"><label class="field"><span>Bộ môn</span><select id="' + prefix + 'Dept">' + DEPTS.map(function (x) { return '<option value="' + x.id + '"' + (x.id === a.dept ? ' selected' : '') + '>' + x.name + '</option>'; }).join('') + '</select></label>' +
+      '<label class="check" style="align-self:end"><input type="checkbox" id="' + prefix + 'Guest"' + (a.guest ? ' checked' : '') + '>Giảng viên thỉnh giảng</label></div>';
+  }
+  function renderAuth() {
+    var a = S.au, reg = a.mode === 'register';
+    var tabs = '<div class="chips"><button class="chip" type="button" data-act="mode" data-v="login" aria-pressed="' + !reg + '">Đăng nhập</button><button class="chip" type="button" data-act="mode" data-v="register" aria-pressed="' + reg + '">Tạo tài khoản mới</button></div>';
+    var fields =
+      '<label class="field"><span>Email</span><input type="email" id="uEmail" autocomplete="email" value="' + esc(a.email) + '"></label>' +
+      (reg ? '<label class="field"><span>Họ tên Thầy Cô</span><input type="text" id="uName" maxlength="60" autocomplete="name" value="' + esc(a.name) + '"></label>' + deptFields('u') : '') +
+      (reg ? '<div class="grid2"><label class="field"><span>Mật khẩu (ít nhất 6 ký tự)</span><input type="password" id="uPw" autocomplete="new-password" value="' + esc(a.pw) + '"></label><label class="field"><span>Nhập lại mật khẩu</span><input type="password" id="uPw2" autocomplete="new-password" value="' + esc(a.pw2) + '"></label></div>'
+        : '<label class="field"><span>Mật khẩu</span><input type="password" id="uPw" autocomplete="current-password" value="' + esc(a.pw) + '"></label>');
+    return '<form data-act="auth" class="body" style="padding:0">' + tabs +
+      (reg ? '<p class="note">Thầy cô lần đầu vào: tạo tài khoản bằng email và mật khẩu của riêng mình. Lần sau đăng nhập lại để sửa phần mình đã nhập.</p>' : '') +
+      fields + '<p class="err" id="uErr">' + esc(a.err) + '</p>' + (a.info ? '<p class="note">' + esc(a.info) + '</p>' : '') +
+      '<div class="btnrow"><button class="btn" type="submit"' + (a.busy ? ' disabled' : '') + '>' + (a.busy ? 'Đang xử lý...' : reg ? 'Tạo tài khoản' : 'Đăng nhập') + '</button>' +
+      (reg ? '' : '<button class="btn ghost" type="button" data-act="forgot">Quên mật khẩu</button>') + '</div>' +
+      '<p class="hint">Mật khẩu chỉ để thầy cô khác không sửa được phần của bạn. Đừng dùng mật khẩu của email hay ngân hàng.</p></form>';
+  }
+  function renderProfile() {
+    var a = S.au;
+    return '<form data-act="profile" class="body" style="padding:0"><p class="note">Tài khoản này chưa có hồ sơ giảng viên. Điền họ tên và bộ môn để tiếp tục.</p>' +
+      '<label class="field"><span>Họ tên Thầy Cô</span><input type="text" id="uName" maxlength="60" value="' + esc(a.name) + '"></label>' + deptFields('u') +
+      '<p class="err" id="uErr">' + esc(a.err) + '</p><div class="btnrow"><button class="btn" type="submit"' + (a.busy ? ' disabled' : '') + '>Lưu</button><button class="btn ghost" type="button" data-act="logout">Đăng xuất</button></div></form>';
+  }
+
+  function renderEnter() {
+    var k = key(), st = statusOf();
+    var head = '<section class="panel"><div class="panel-h"><h2>Nhập môn dạy</h2></div><div class="body">';
+    if (!S.authReady || (S.uid && !S.teachersLoaded)) { $('#main').innerHTML = head + '<p class="hint">Đang tải...</p></div></section>'; return; }
+    if (!S.uid) { $('#main').innerHTML = head + renderAuth() + '</div></section>'; return; }
+    var me = T[S.uid];
+    if (!me) { $('#main').innerHTML = head + renderProfile() + '</div></section>'; return; }
+    var canEdit = st === 'open';
+    syncDraftCourse();
+    var c = cById(S.d.c), d = S.d;
+    var nlOpts = ''; for (var i = 1; i <= 10; i++) nlOpts += '<option value="' + i + '"' + (Number(d.nl) === i ? ' selected' : '') + '>' + i + '</option>';
+
+    var form = canEdit ?
+      '<form data-act="add" class="body" style="padding:0"><h3 class="sect-h">Thêm môn thầy cô dạy</h3>' +
+      '<label class="field"><span>Tìm môn trong danh mục</span><input type="search" id="cQ" placeholder="Gõ một phần tên môn" value="' + esc(d.q) + '"></label>' +
+      '<label class="field"><span>Môn học</span><select id="cSel" data-act="pick">' + courseOptions() + '</select></label>' +
+      '<div class="grid3"><label class="field"><span>Số tín chỉ</span><select id="cCr" data-act="pick">' + crOptions() + '</select></label>' +
+      '<label class="field"><span>Số lớp</span><select id="cNl" data-act="pick">' + nlOpts + '</select></label>' +
+      '<label class="field"><span>Tỷ lệ giờ dạy (%)</span><input type="number" id="cP" min="1" max="100" inputmode="numeric" value="' + d.p + '"></label></div>' +
+      '<p class="hint">Tỷ lệ mặc định 100%. Nếu lớp học phần đó có 2 giảng viên cùng dạy, mỗi người nhập tỷ lệ của mình.</p>' +
+      '<p class="calc" id="calc">' + calcText() + '</p><p class="err" id="err">' + esc(S.err) + '</p>' +
+      '<div class="btnrow"><button class="btn" type="submit"' + (c ? '' : ' disabled') + '>Thêm môn</button></div></form>' :
+      '<p class="note">' + ((st === 'soon' || st === 'unset') ? 'Chưa đến thời gian nhập. Thầy cô quay lại khi khoa mở nhập.' : 'Học kỳ này đã khóa nên không thêm hoặc sửa được. Thầy cô vẫn xem được các môn đã nhập bên dưới.') + '</p>';
+
+    var mine = A.filter(function (a) { return a.sem === k && a.tid === S.uid; });
+    var total = mine.reduce(function (s, a) { return s + tiet(a); }, 0);
+    var list = !mine.length ? '<p class="hint">Chưa có môn nào trong học kỳ này.</p>' :
+      '<ul class="mine">' + mine.map(function (a) {
+        var cc = cById(a.c);
+        var ctl = canEdit ?
+          '<span class="ctl"><label class="pct"><input type="number" min="1" max="100" value="' + a.p + '" data-act="edit" data-id="' + esc(a.id) + '" aria-label="Tỷ lệ giờ dạy (%)">%</label><button class="x" type="button" data-act="del" data-id="' + esc(a.id) + '" aria-label="Xóa dòng này">×</button></span>' :
+          '<span class="ctl ro">' + fmt(tiet(a)) + ' tiết</span>';
+        return '<li><span class="nmc"><span>' + esc(cc ? cc.name : '(môn đã xóa)') + '</span><span class="sm">' + a.cr + ' TC · ' + fmt(tiet(a)) + ' tiết' + (a.p < 100 ? ' (' + a.p + '%)' : '') + '</span></span>' + ctl + '</li>';
+      }).join('') + '</ul><div class="mine-total"><span>Tổng của thầy cô</span><span class="v">' + fmt(total) + ' tiết</span></div>';
+
+    $('#main').innerHTML = head +
+      '<div class="hello"><span>Đang nhập với tên <b>' + esc(me.name) + '</b></span><button class="btn ghost small" type="button" data-act="logout">Đăng xuất</button></div>' +
+      form + '<div class="field" style="gap:10px"><h3 class="sect-h">Các môn thầy cô đã nhập</h3>' + list + '</div></div></section>';
+  }
+
+  /* ---------- Quản trị ---------- */
+  function renderAdmin() {
+    var s = SEM[skey()] || {}, st = statusOf();
+    var cat = DEPTS.map(function (d) {
+      var cs = courses.filter(function (c) { return c.dept === d.id; });
+      return '<details class="dp"><summary><i class="dot" style="background:var(--' + d.id + ')"></i>' + d.name + ' (' + cs.length + ' môn)</summary><ul class="cat">' +
+        cs.map(function (c) { return '<li><span>' + esc(c.name) + '</span><span class="t">' + c.cr.join(' / ') + ' TC</span></li>'; }).join('') + '</ul></details>';
+    }).join('');
+    var deptOpts = DEPTS.map(function (d) { return '<option value="' + d.id + '">' + d.name + '</option>'; }).join('');
+    $('#main').innerHTML =
+      '<section class="panel"><div class="panel-h"><h2>Thời hạn nhập · Học kỳ ' + S.hk + ', ' + S.year + '</h2></div><div class="body">' +
+      '<div class="dates"><label class="field"><span>Mở nhập từ</span><input type="date" id="dOpen" value="' + esc(s.open || '') + '"></label><label class="field"><span>Khóa sau ngày</span><input type="date" id="dClose" value="' + esc(s.close || '') + '"></label></div>' +
+      '<div class="btnrow">' + (st === 'open' ? '<button class="btn ghost" data-act="force" data-v="locked">Khóa ngay</button>' : '<button class="btn" data-act="force" data-v="open">Mở nhập ngay</button>') +
+      (s.force ? '<button class="btn ghost" data-act="force" data-v="">Theo ngày đã đặt</button>' : '') + '</div>' +
+      '<p class="hint">Chọn cả hai ngày thì trang tự mở và khóa theo ngày. Hết hạn thì mọi người chỉ xem được.</p></div></section>' +
+      '<section class="panel"><div class="panel-h"><h2>Danh mục môn học</h2></div><div class="body">' + cat +
+      '<form data-act="addcourse" class="body" style="padding:0"><h3 class="sect-h">Thêm môn vào danh mục</h3>' +
+      '<label class="field"><span>Tên môn</span><input type="text" id="aName" maxlength="80"></label>' +
+      '<div class="grid2"><label class="field"><span>Bộ môn</span><select id="aDept">' + deptOpts + '</select></label><label class="field"><span>Số tín chỉ</span><select id="aCr"><option value="3">3 tín chỉ</option><option value="2">2 tín chỉ</option><option value="2,3">2 hoặc 3 tín chỉ</option></select></label></div>' +
+      '<p class="err" id="aErr"></p><div class="btnrow"><button class="btn" type="submit">Thêm môn</button></div></form>' +
+      '</div></section>';
+  }
+
+  function render() {
+    renderBanners();
+    $('#adminTab').hidden = !S.isAdmin;
+    if (S.tab === 'admin' && !S.isAdmin) S.tab = 'sum';
+    document.querySelectorAll('.tab').forEach(function (b) { b.setAttribute('aria-selected', b.getAttribute('data-tab') === S.tab); });
+    if (S.tab === 'sum') renderSummary(); else if (S.tab === 'enter') renderEnter(); else renderAdmin();
+  }
+
+  var dirty = false;
+  function typing() {
+    var a = document.activeElement;
+    return a && $('#main').contains(a) && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName);
+  }
+  function onData() {
+    rebuildCourses();
+    if (typing()) { dirty = true; renderBanners(); return; }
+    render();
+  }
+  $('#main').addEventListener('focusout', function () {
+    setTimeout(function () { if (dirty && !typing()) { dirty = false; render(); } }, 0);
+  });
+
+  /* ---------- Sự kiện ---------- */
+  $('#fYear').innerHTML = YEARS.map(function (y) { return '<option' + (y === S.year ? ' selected' : '') + '>' + y + '</option>'; }).join('');
+  $('#fHk').innerHTML = HKS.map(function (h) { return '<option value="' + h + '">Học kỳ ' + h + '</option>'; }).join('');
+  $('#fYear').addEventListener('change', function (e) { S.year = e.target.value; render(); });
+  $('#fHk').addEventListener('change', function (e) { S.hk = Number(e.target.value); render(); });
+  document.querySelector('.tabs').addEventListener('click', function (e) {
+    var b = e.target.closest('.tab'); if (!b) return;
+    S.tab = b.getAttribute('data-tab'); S.err = ''; render();
+  });
+
+  function toast(m) { var s = document.createElement('div'); s.className = 'toast'; s.textContent = m; document.body.appendChild(s); setTimeout(function () { s.remove(); }, 4000); }
+
+  var main = $('#main');
+  main.addEventListener('click', async function (e) {
+    var el = e.target.closest('[data-act]'); if (!el) return;
+    var act = el.getAttribute('data-act'), id = el.getAttribute('data-id');
+    try {
+      if (act === 'dept') { S.dept = el.getAttribute('data-v'); render(); }
+      else if (act === 'toggle') {
+        var open = el.getAttribute('aria-expanded') !== 'true';
+        S.open[id] = open; el.setAttribute('aria-expanded', open);
+        el.parentNode.querySelector('.detail').hidden = !open;
+      }
+      else if (act === 'mode') { S.au.mode = el.getAttribute('data-v'); S.au.err = ''; S.au.info = ''; render(); }
+      else if (act === 'logout') { await signOut(auth); }
+      else if (act === 'forgot') {
+        var em = S.au.email.trim();
+        if (!em) { S.au.err = 'Nhập email trước, rồi bấm "Quên mật khẩu".'; S.au.info = ''; return render(); }
+        await sendPasswordResetEmail(auth, em);
+        S.au.err = ''; S.au.info = 'Đã gửi email đặt lại mật khẩu tới ' + em + '. Kiểm tra cả thư mục thư rác.'; render();
+      }
+      else if (act === 'del') {
+        if (statusOf() !== 'open') return;
+        await deleteDoc(doc(db, 'assignments', id));
+      }
+      else if (act === 'force') {
+        var v = el.getAttribute('data-v'), s = SEM[skey()] || {};
+        var o = {}; if (s.open) o.open = s.open; if (s.close) o.close = s.close; if (v) o.force = v;
+        await setDoc(doc(db, 'sems', skey()), o);
+      }
+    } catch (err) { if (act === 'forgot') { S.au.err = authMsg(err); S.au.info = ''; render(); } else toast(authMsg(err)); }
+  });
+
+  main.addEventListener('input', function (e) {
+    var el = e.target;
+    if (el.id === 'uEmail') S.au.email = el.value;
+    else if (el.id === 'uPw') S.au.pw = el.value;
+    else if (el.id === 'uPw2') S.au.pw2 = el.value;
+    else if (el.id === 'uName') S.au.name = el.value;
+    else if (el.id === 'cQ') {
+      S.d.q = el.value; syncDraftCourse();
+      $('#cSel').innerHTML = courseOptions(); $('#cCr').innerHTML = crOptions(); $('#calc').innerHTML = calcText();
+    }
+    else if (el.id === 'cP') {
+      var p = Math.round(Number(el.value));
+      if (p >= 1 && p <= 100) { S.d.p = p; $('#calc').innerHTML = calcText(); }
+    }
+  });
+  main.addEventListener('change', async function (e) {
+    var el = e.target, act = el.getAttribute('data-act');
+    try {
+      if (el.id === 'uDept') S.au.dept = el.value;
+      else if (el.id === 'uGuest') S.au.guest = el.checked;
+      else if (act === 'pick') {
+        if (el.id === 'cSel') S.d.c = el.value;
+        if (el.id === 'cCr') S.d.cr = Number(el.value);
+        if (el.id === 'cNl') S.d.nl = Number(el.value);
+        S.err = ''; render();
+      }
+      else if (act === 'edit') {
+        if (statusOf() !== 'open') return;
+        var n = Math.round(Number(el.value));
+        if (n >= 1 && n <= 100) await updateDoc(doc(db, 'assignments', el.getAttribute('data-id')), { p: n });
+        else render();
+      }
+      else if (el.id === 'dOpen' || el.id === 'dClose') {
+        var o = $('#dOpen').value, c = $('#dClose').value;
+        if (o && c && o <= c) await setDoc(doc(db, 'sems', skey()), { open: o, close: c });
+      }
+    } catch (err) { toast(authMsg(err)); }
+  });
+
+  main.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var act = e.target.getAttribute('data-act'), a = S.au;
+    try {
+      if (act === 'auth') {
+        var email = a.email.trim();
+        if (!email || !a.pw) { a.err = 'Nhập email và mật khẩu.'; a.info = ''; return render(); }
+        if (a.mode === 'register') {
+          var nm = a.name.trim().replace(/\s+/g, ' ');
+          if (!nm) { a.err = 'Nhập họ tên thầy cô.'; return render(); }
+          if (a.pw.length < 6) { a.err = 'Mật khẩu cần ít nhất 6 ký tự.'; return render(); }
+          if (a.pw !== a.pw2) { a.err = 'Hai lần nhập mật khẩu chưa giống nhau.'; return render(); }
+        }
+        a.busy = true; a.err = ''; a.info = ''; render();
+        try {
+          if (a.mode === 'register') {
+            var cred = await createUserWithEmailAndPassword(auth, email, a.pw);
+            await setDoc(doc(db, 'teachers', cred.user.uid), { name: nm, dept: a.dept, guest: !!a.guest });
+          } else {
+            await signInWithEmailAndPassword(auth, email, a.pw);
+          }
+          S.au = { mode: 'login', email: '', pw: '', pw2: '', name: '', dept: 'han', guest: false, err: '', info: '', busy: false };
+        } catch (err) { a.busy = false; a.err = authMsg(err); a.pw = ''; a.pw2 = ''; }
+        render();
+      } else if (act === 'profile') {
+        var nm2 = a.name.trim().replace(/\s+/g, ' ');
+        if (!nm2) { a.err = 'Nhập họ tên thầy cô.'; return render(); }
+        await setDoc(doc(db, 'teachers', S.uid), { name: nm2, dept: a.dept, guest: !!a.guest });
+        a.err = '';
+      } else if (act === 'add') {
+        if (statusOf() !== 'open' || !S.uid) return;
+        var d = S.d, p = Math.round(Number(d.p));
+        if (!d.c) { S.err = 'Chọn một môn trước.'; return render(); }
+        if (!(p >= 1 && p <= 100)) { S.err = 'Tỷ lệ giờ dạy cần từ 1 đến 100.'; return render(); }
+        S.err = '';
+        for (var i = 0; i < Number(d.nl); i++) {
+          await addDoc(collection(db, 'assignments'), { sem: key(), tid: S.uid, c: d.c, cr: Number(d.cr), p: p });
+        }
+        d.nl = 1; d.p = 100;
+      } else if (act === 'addcourse') {
+        var name = $('#aName').value.trim(), dept = $('#aDept').value;
+        var cr = $('#aCr').value.split(',').map(Number);
+        if (!name) { $('#aErr').textContent = 'Nhập tên môn.'; return; }
+        await addDoc(collection(db, 'customCourses'), { name: name, dept: dept, cr: cr });
+        $('#aName').value = '';
+      }
+    } catch (err) {
+      if (act === 'add') { S.err = authMsg(err); render(); } else toast(authMsg(err));
+    }
+  });
+
+  /* ---------- Kết nối Firebase ---------- */
+  rebuildCourses();
+  render();
+  var onErr = function (err) { S.dbErr = (err && err.code) || 'unavailable'; render(); };
+  onAuthStateChanged(auth, function (u) {
+    S.authReady = true; S.uid = u ? u.uid : null;
+    S.isAdmin = !!u && ADMIN_EMAILS.some(function (m) { return m.toLowerCase() === (u.email || '').toLowerCase(); });
+    if (!u) { S.au.pw = ''; S.au.pw2 = ''; }
+    render();
+  });
+  onSnapshot(collection(db, 'teachers'), function (snap) { T = {}; snap.docs.forEach(function (d) { T[d.id] = d.data(); }); S.teachersLoaded = true; S.dbErr = ''; onData(); }, onErr);
+  onSnapshot(collection(db, 'assignments'), function (snap) { A = snap.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); }); onData(); }, onErr);
+  onSnapshot(collection(db, 'customCourses'), function (snap) { X = snap.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); }); onData(); }, onErr);
+  onSnapshot(collection(db, 'sems'), function (snap) { SEM = {}; snap.docs.forEach(function (d) { SEM[d.id] = d.data(); }); onData(); }, onErr);
+})();
+</script>
+</body>
+</html>
