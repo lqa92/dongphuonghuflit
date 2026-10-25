@@ -272,13 +272,13 @@ const db = getFirestore(app);
   var slug = function (s) {
     return s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'd').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   };
-  var loginEmail = function (k) { return k + '@' + DOMAIN; };
+  var loginEmail = function (k) { return k + (T[k] && T[k].gen > 0 ? '.g' + T[k].gen : '') + '@' + DOMAIN; };
   /* Mọi người: tên có sẵn + tên khoa thêm + người đã đăng nhập */
   function people() {
     var m = {};
     DEFAULT_ROSTER.forEach(function (r) { m[slug(r[0])] = { id: slug(r[0]), name: r[0], dept: r[1] || null, guest: false, registered: false }; });
     Object.keys(R).forEach(function (id) { if (!m[id]) m[id] = { id: id, name: R[id].name, dept: R[id].dept || null, guest: false, registered: false }; });
-    Object.keys(T).forEach(function (id) { var t = T[id]; m[id] = { id: id, name: t.name, dept: t.dept, guest: !!t.guest, registered: true }; });
+    Object.keys(T).forEach(function (id) { var t = T[id]; m[id] = { id: id, name: t.name, dept: t.dept, guest: !!t.guest, registered: true, pw: t.pw !== false }; });
     return Object.keys(m).map(function (k) { return m[k]; });
   }
   var MANAGERS = MANAGER_NAMES.map(function (n) { return slug(n); });
@@ -425,7 +425,7 @@ const db = getFirestore(app);
       } else {
         body = (a.mode === 'create'
           ? '<p class="note">Thầy cô lần đầu vào: chọn bộ môn và tạo mật khẩu của riêng mình. Lần sau chọn tên và nhập đúng mật khẩu này để sửa phần mình đã nhập.</p>' + deptFields()
-          : '<p class="note">Chỉ dùng khi khoa đã xóa mật khẩu cũ của thầy cô. Hãy tạo mật khẩu mới, các môn đã nhập vẫn còn.</p>') +
+          : '<p class="note">Khoa đã cấp lại mật khẩu cho thầy cô. Hãy tạo mật khẩu mới, các môn đã nhập vẫn còn.</p>') +
           '<div class="grid2"><label class="field"><span>Mật khẩu (ít nhất 6 ký tự)</span><input type="password" id="uPw" autocomplete="new-password" value="' + esc(a.pw) + '"></label>' +
           '<label class="field"><span>Nhập lại mật khẩu</span><input type="password" id="uPw2" autocomplete="new-password" value="' + esc(a.pw2) + '"></label></div>';
       }
@@ -435,8 +435,7 @@ const db = getFirestore(app);
       '<label class="field"><span>Họ tên Thầy Cô</span><select id="uSlug">' + opts + '</select></label>' + body +
       '<p class="err" id="uErr">' + esc(a.err) + '</p>' +
       '<div class="btnrow"><button class="btn" type="submit"' + (!a.slug || a.busy ? ' disabled' : '') + '>' + (a.busy ? 'Đang xử lý...' : btn) + '</button>' +
-      (a.slug && a.mode === 'login' ? '<button class="btn ghost" type="button" data-act="mode" data-v="recreate">Quên mật khẩu</button>' : '') +
-      (a.mode === 'recreate' ? '<button class="btn ghost" type="button" data-act="mode" data-v="login">Quay lại</button>' : '') + '</div>' +
+      '</div>' + (a.slug && a.mode === 'login' ? '<p class="hint">Quên mật khẩu: nhờ khoa cấp lại, rồi chọn lại tên và tạo mật khẩu mới.</p>' : '') +
       '<p class="hint">Mật khẩu chỉ để thầy cô khác không sửa được phần của bạn. Đừng dùng mật khẩu của email hay ngân hàng.</p>' +
       '<p class="hint"><button class="linkbtn" type="button" data-act="mode" data-v="admin">Đăng nhập quản trị</button></p></form>';
   }
@@ -508,7 +507,8 @@ const db = getFirestore(app);
     var deptOpts = DEPTS.map(function (d) { return '<option value="' + d.id + '">' + d.name + '</option>'; }).join('');
     var pl = people().sort(function (a, b) { return a.name.localeCompare(b.name, 'vi'); });
     var peopleHtml = pl.length ? '<ul class="cat">' + pl.map(function (p) {
-      return '<li><span>' + esc(p.name) + ' (' + (p.registered ? deptOf(p.dept).short + (p.guest ? ', thỉnh giảng' : '') : (p.dept ? deptOf(p.dept).short + ', ' : '') + 'chưa đăng nhập') + ')</span>' +
+      return '<li><span>' + esc(p.name) + ' (' + (p.registered ? deptOf(p.dept).short + (p.guest ? ', thỉnh giảng' : '') + (p.pw ? '' : ', chờ tạo mật khẩu mới') : (p.dept ? deptOf(p.dept).short + ', ' : '') + 'chưa đăng nhập') + ')</span>' +
+        (p.registered ? '<button class="btn ghost small" type="button" data-act="resetpw" data-id="' + esc(p.id) + '">' + (S.confirm === p.id ? 'Bấm lần nữa để xác nhận' : 'Cấp lại mật khẩu') + '</button>' : '') +
         (R[p.id] && !p.registered ? '<button class="btn ghost small" type="button" data-act="delname" data-id="' + esc(p.id) + '">Xóa</button>' : '') + '</li>';
     }).join('') + '</ul>' : '';
     $('#main').innerHTML =
@@ -521,7 +521,7 @@ const db = getFirestore(app);
       '<form data-act="addname" class="body" style="padding:0"><h3 class="sect-h">Thêm tên thầy cô</h3>' +
       '<label class="field"><span>Họ tên</span><input type="text" id="rName" maxlength="60"></label>' +
       '<p class="err" id="rErr"></p><div class="btnrow"><button class="btn" type="submit">Thêm tên</button></div></form>' +
-      '<p class="note">Thầy cô quên mật khẩu: vào Firebase > Authentication > Users, tìm theo tên không dấu viết nối bằng gạch ngang (ví dụ luong-quoc-an), bấm dấu ba chấm > Delete account. Sau đó thầy cô chọn tên, bấm "Quên mật khẩu" và tạo mật khẩu mới. Các môn đã nhập vẫn còn.</p></div></section>' +
+      '<p class="note">Thầy cô quên mật khẩu: bấm "Cấp lại mật khẩu" cạnh tên, rồi báo thầy cô chọn lại tên và tạo mật khẩu mới ngay. Các môn đã nhập vẫn còn. Mật khẩu cũ không dùng được nữa.</p></div></section>' +
       '<section class="panel"><div class="panel-h"><h2>Danh mục môn học</h2></div><div class="body">' + cat +
       '<form data-act="addcourse" class="body" style="padding:0"><h3 class="sect-h">Thêm môn vào danh mục</h3>' +
       '<label class="field"><span>Tên môn</span><input type="text" id="aName" maxlength="80"></label>' +
@@ -602,7 +602,7 @@ const db = getFirestore(app);
   $('#fHk').addEventListener('change', function (e) { S.hk = Number(e.target.value); render(); });
   document.querySelector('.tabs').addEventListener('click', function (e) {
     var b = e.target.closest('.tab'); if (!b) return;
-    S.tab = b.getAttribute('data-tab'); S.err = ''; render();
+    S.tab = b.getAttribute('data-tab'); S.err = ''; S.confirm = null; render();
   });
 
   function toast(m) { var s = document.createElement('div'); s.className = 'toast'; s.textContent = m; document.body.appendChild(s); setTimeout(function () { s.remove(); }, 4000); }
@@ -621,6 +621,10 @@ const db = getFirestore(app);
       else if (act === 'mode') { var m = el.getAttribute('data-v'); S.au.mode = m; S.au.err = ''; S.au.pw = ''; S.au.pw2 = ''; render(); }
       else if (act === 'logout') { await signOut(auth); }
       else if (act === 'excel') { exportExcel(); }
+      else if (act === 'resetpw') {
+        if (S.confirm !== id) { S.confirm = id; render(); }
+        else { S.confirm = null; await updateDoc(doc(db, 'teachers', id), { gen: ((T[id] && T[id].gen) || 0) + 1, pw: false }); }
+      }
       else if (act === 'delname') { await deleteDoc(doc(db, 'roster', id)); }
       else if (act === 'del') {
         if (statusOf() !== 'open') return;
@@ -651,7 +655,7 @@ const db = getFirestore(app);
   main.addEventListener('change', async function (e) {
     var el = e.target, act = el.getAttribute('data-act');
     try {
-      if (el.id === 'uSlug') { var pp = personOf(el.value); S.au.slug = el.value; S.au.dept = pp && pp.dept ? pp.dept : 'han'; S.au.mode = pp && pp.registered ? 'login' : 'create'; S.au.err = ''; S.au.pw = ''; S.au.pw2 = ''; render(); }
+      if (el.id === 'uSlug') { var pp = personOf(el.value); S.au.slug = el.value; S.au.dept = pp && pp.dept ? pp.dept : 'han'; S.au.mode = pp && pp.registered ? (pp.pw ? 'login' : 'recreate') : 'create'; S.au.err = ''; S.au.pw = ''; S.au.pw2 = ''; render(); }
       else if (el.id === 'uDept') S.au.dept = el.value;
       else if (el.id === 'uGuest') S.au.guest = el.checked;
       else if (act === 'pick') {
@@ -698,20 +702,21 @@ const db = getFirestore(app);
             await signInWithEmailAndPassword(auth, loginEmail(a.slug), a.pw);
           } else {
             await createUserWithEmailAndPassword(auth, loginEmail(a.slug), a.pw);
-            if (a.mode === 'create' || !pr.registered) await setDoc(doc(db, 'teachers', a.slug), { name: pr.name, dept: a.dept, guest: !!a.guest });
+            if (a.mode === 'create') await setDoc(doc(db, 'teachers', a.slug), { name: pr.name, dept: a.dept, guest: !!a.guest, gen: 0, pw: true });
+            else await updateDoc(doc(db, 'teachers', a.slug), { pw: true });
           }
           S.au = freshAu();
         } catch (err) {
           a.busy = false; a.pw = ''; a.pw2 = '';
           if (err && err.code === 'auth/email-already-in-use') {
-            a.err = a.mode === 'create' ? 'Tên này đã có mật khẩu. Hãy nhập mật khẩu để vào.' : 'Khoa chưa xóa mật khẩu cũ của thầy cô. Nhờ khoa xử lý rồi thử lại.';
+            a.err = a.mode === 'create' ? 'Tên này đã có mật khẩu. Hãy nhập mật khẩu để vào.' : 'Chưa tạo được mật khẩu mới. Báo khoa để cấp lại.';
             if (a.mode === 'create') a.mode = 'login';
           } else a.err = authMsg(err);
         }
         render();
       } else if (act === 'profile') {
         var p2 = personOf(S.key);
-        await setDoc(doc(db, 'teachers', S.key), { name: p2 ? p2.name : S.key, dept: a.dept, guest: !!a.guest });
+        await setDoc(doc(db, 'teachers', S.key), { name: p2 ? p2.name : S.key, dept: a.dept, guest: !!a.guest, gen: S.gen || 0, pw: true });
         a.err = '';
       } else if (act === 'addstaff') {
         var sn = $('#sName').value.trim().replace(/\s+/g, ' '), sk = slug(sn), sd = $('#sDept').value;
@@ -755,7 +760,10 @@ const db = getFirestore(app);
   onAuthStateChanged(auth, function (u) {
     var em = u ? (u.email || '').toLowerCase() : '';
     S.authReady = true; S.signedIn = !!u;
-    S.key = em.slice(-(DOMAIN.length + 1)) === '@' + DOMAIN ? em.slice(0, -(DOMAIN.length + 1)) : null;
+    var local = em.slice(-(DOMAIN.length + 1)) === '@' + DOMAIN ? em.slice(0, -(DOMAIN.length + 1)) : null;
+    var gm = local ? local.match(/\.g(\d+)$/) : null;
+    S.gen = gm ? Number(gm[1]) : 0;
+    S.key = local ? local.replace(/\.g\d+$/, '') : null;
     S.isManager = !!S.key && MANAGERS.indexOf(S.key) >= 0;
     S.isAdmin = !!u && ADMIN_EMAILS.some(function (m) { return m.toLowerCase() === em; });
     if (!u) { S.au.pw = ''; S.au.pw2 = ''; }
