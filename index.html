@@ -435,7 +435,7 @@ const db = getFirestore(app);
       '<label class="field"><span>Họ tên Thầy Cô</span><select id="uSlug">' + opts + '</select></label>' + body +
       '<p class="err" id="uErr">' + esc(a.err) + '</p>' +
       '<div class="btnrow"><button class="btn" type="submit"' + (!a.slug || a.busy ? ' disabled' : '') + '>' + (a.busy ? 'Đang xử lý...' : btn) + '</button>' +
-      '</div>' + (a.slug && a.mode === 'login' ? '<p class="hint">Quên mật khẩu: nhờ khoa cấp lại, rồi chọn lại tên và tạo mật khẩu mới.</p>' : '') +
+      '</div>' + '<p class="hint">Thầy cô cần cấp lại mật khẩu vui lòng liên hệ thầy Quốc An.</p>' +
       '<p class="hint">Mật khẩu chỉ để thầy cô khác không sửa được phần của bạn. Đừng dùng mật khẩu của email hay ngân hàng.</p>' +
       '<p class="hint"><button class="linkbtn" type="button" data-act="mode" data-v="admin">Đăng nhập quản trị</button></p></form>';
   }
@@ -521,7 +521,7 @@ const db = getFirestore(app);
       '<form data-act="addname" class="body" style="padding:0"><h3 class="sect-h">Thêm tên thầy cô</h3>' +
       '<label class="field"><span>Họ tên</span><input type="text" id="rName" maxlength="60"></label>' +
       '<p class="err" id="rErr"></p><div class="btnrow"><button class="btn" type="submit">Thêm tên</button></div></form>' +
-      '<p class="note">Thầy cô quên mật khẩu: bấm "Cấp lại mật khẩu" cạnh tên, rồi báo thầy cô chọn lại tên và tạo mật khẩu mới ngay. Các môn đã nhập vẫn còn. Mật khẩu cũ không dùng được nữa.</p></div></section>' +
+      '</div></section>' +
       '<section class="panel"><div class="panel-h"><h2>Danh mục môn học</h2></div><div class="body">' + cat +
       '<form data-act="addcourse" class="body" style="padding:0"><h3 class="sect-h">Thêm môn vào danh mục</h3>' +
       '<label class="field"><span>Tên môn</span><input type="text" id="aName" maxlength="80"></label>' +
