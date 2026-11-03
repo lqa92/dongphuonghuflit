@@ -67,6 +67,10 @@ h1 .spec { color: var(--accent); }
 .tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; border-bottom: 1px solid var(--line); }
 .tab { flex: none; border: 1px solid var(--line); border-bottom: none; background: transparent; border-radius: 8px 8px 0 0; padding: 8px 14px; cursor: pointer; color: var(--muted); font-weight: 500; white-space: nowrap; }
 .tab:hover { color: var(--ink); }
+.tab { touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.tab.tab-drag { opacity: .45; cursor: grabbing; }
+.tab.drop-before { box-shadow: inset 4px 0 0 var(--accent) !important; }
+.tab.drop-after { box-shadow: inset -4px 0 0 var(--accent) !important; }
 .tab[aria-selected="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: inset 0 3px 0 var(--accent); }
 
 .toolbar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding: 12px 0; }
@@ -443,7 +447,8 @@ body.linking .card { cursor: pointer; }
       b.type = "button"; b.className = "tab"; b.setAttribute("role", "tab");
       b.setAttribute("aria-selected", i === S.active ? "true" : "false");
       b.textContent = pg.name;
-      b.onclick = () => { if (S.active !== i) { S.active = i; if (linkSel) linkSel.clear(); commit(); } };
+      b.onclick = () => { if (tabJustDragged) return; if (S.active !== i) { S.active = i; if (linkSel) linkSel.clear(); commit(); } };
+      b.addEventListener("pointerdown", e => tabDown(e, i, b));
       b.ondblclick = () => { S.active = i; commit(); renamePage(); };
       tabs.append(b);
     });
@@ -918,6 +923,43 @@ body.linking .card { cursor: pointer; }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") { e.preventDefault(); undo(); }
     if (e.key === "Escape") { if (paint) { paint = null; render(); } else if (linkSel) { linkSel = null; render(); } }
   });
+
+  /* ---------- reorder tabs by dragging ---------- */
+  let tabJustDragged = false;
+  function tabDown(e, i, el) {
+    if (e.button > 0) return;
+    const sx = e.clientX, tabs = [...$("tabs").children], n = tabs.length;
+    let active = false, ins = i;
+    const clear = () => tabs.forEach(t => t.classList.remove("drop-before", "drop-after"));
+    const mv = ev => {
+      if (!active) {
+        if (Math.abs(ev.clientX - sx) < 8) return;
+        active = true; el.classList.add("tab-drag"); document.body.classList.add("is-dragging");
+      }
+      ev.preventDefault();
+      ins = n;
+      for (let k = 0; k < n; k++) { const r = tabs[k].getBoundingClientRect(); if (ev.clientX < r.left + r.width / 2) { ins = k; break; } }
+      clear();
+      if (ins < n) tabs[ins].classList.add("drop-before"); else tabs[n - 1].classList.add("drop-after");
+      const box = $("tabs").getBoundingClientRect();
+      if (ev.clientX < box.left + 40) $("tabs").scrollLeft -= 12; else if (ev.clientX > box.right - 40) $("tabs").scrollLeft += 12;
+    };
+    const up = () => {
+      removeEventListener("pointermove", mv); removeEventListener("pointerup", up); removeEventListener("pointercancel", up);
+      if (!active) return;
+      clear(); el.classList.remove("tab-drag"); document.body.classList.remove("is-dragging");
+      tabJustDragged = true; setTimeout(() => tabJustDragged = false, 0);
+      const to = ins > i ? ins - 1 : ins;
+      if (to === i) return;
+      snap();
+      const activeId = page().id;
+      const [pg] = S.pages.splice(i, 1); S.pages.splice(to, 0, pg);
+      S.active = S.pages.findIndex(x => x.id === activeId);
+      commit(); toast("Đã đổi vị trí trang");
+    };
+    addEventListener("pointermove", mv, { passive: false });
+    addEventListener("pointerup", up); addEventListener("pointercancel", up);
+  }
 
   /* ---------- PDF export ---------- */
   const LIBS = [
