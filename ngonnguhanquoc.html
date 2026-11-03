@@ -420,7 +420,7 @@ body.linking .card { cursor: pointer; }
   const gKeys = p => Object.keys(p.groups || {});
   const gLetter = (p, g) => String.fromCharCode(65 + gKeys(p).indexOf(g));
   const gMembers = (p, g) => allCards(p).filter(c => c.group === g);
-  function gOptions(p, g) { const m = {}; gMembers(p, g).forEach(c => { const k = c.opt || c.id; m[k] = (m[k] || 0) + credits(c); }); return m; }
+  function gOptions(p, g) { const m = {}; p.rows.flatMap(r => r.slots).filter(c => c && c.group === g).forEach(c => { const k = c.opt || c.id; m[k] = (m[k] || 0) + credits(c); }); return m; }
   function gPick(p, g) { const n = Object.keys(gOptions(p, g)).length; return Math.min(Math.max(1, (p.groups[g] && p.groups[g].pick) | 0 || 1), Math.max(1, n)); }
   function gCredits(p, g) {
     const vals = Object.values(gOptions(p, g)).sort((a, b) => b - a);
