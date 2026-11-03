@@ -261,6 +261,9 @@ body { padding:0; }
 .hks { font-size:13px; color:var(--muted); margin-top:2px; white-space:pre-wrap; }
 .dh { margin:12px 0 0; font-size:13px; font-weight:700; display:flex; align-items:center; }
 .lgi { margin-right:16px; font-weight:600; color:#0d0d0d; }
+.sempick { display:flex; flex-direction:column; gap:10px; padding:14px 0; border-top:1.5px solid #0d0d0d; border-bottom:1.5px solid #0d0d0d; }
+.sp-row { display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; }
+.sp-row .vl { min-width:72px; }
 </style>
 
 <style>body{margin:0}[hidden]{display:none!important}</style>
@@ -386,8 +389,8 @@ const db = getFirestore(app);
   var HCOL = ['#0d0d0d', '#ff5a2b', '#9a9a94'];
   var sq = function (h) { return '<i class="sq" style="background:' + HCOL[h - 1] + '"></i>'; };
   function semPick(p) {
-    return '<div class="grid2"><label class="field"><span>Năm học</span><select id="' + p + 'Year">' + YEARS.map(function (y) { return '<option' + (y === S.year ? ' selected' : '') + '>' + y + '</option>'; }).join('') + '</select></label>' +
-      '<label class="field"><span>Học kỳ</span><select id="' + p + 'Hk">' + HKS.map(function (h) { return '<option value="' + h + '"' + (h === S.hk ? ' selected' : '') + '>Học kỳ ' + h + '</option>'; }).join('') + '</select></label></div>';
+    return '<div class="sempick"><div class="sp-row"><span class="vl">Năm học</span><div class="chips">' + YEARS.map(function (y) { return '<button class="chip" type="button" data-act="semyear" data-v="' + y + '" aria-pressed="' + (y === S.year) + '">' + y + '</button>'; }).join('') + '</div></div>' +
+      '<div class="sp-row"><span class="vl">Học kỳ</span><div class="chips">' + HKS.map(function (h) { return '<button class="chip" type="button" data-act="semhk" data-v="' + h + '" aria-pressed="' + (h === S.hk) + '">' + sq(h) + 'Học kỳ ' + h + '</button>'; }).join('') + '</div></div></div>';
   }
   var freshAu = function () { return { mode: 'login', slug: '', email: '', pw: '', pw2: '', dept: 'han', guest: false, err: '', info: '', busy: false }; };
 
@@ -409,7 +412,7 @@ const db = getFirestore(app);
     if (c === 'auth/network-request-failed') return 'Mất kết nối mạng. Kiểm tra mạng rồi thử lại.';
     if (c === 'auth/operation-not-allowed') return 'Chưa bật đăng nhập Email/Password trong Firebase.';
     if (c === 'permission-denied') return 'Không có quyền thực hiện. Kiểm tra lại Rules trong Firestore.';
-    return 'Chưa thực hiện được. Thử lại sau ít giây.';
+    return 'Chưa thực hiện được (' + (c || (e && e.message) || '?') + '). Thử lại sau ít giây.';
   }
 
   function renderBanners() {
@@ -622,7 +625,7 @@ const db = getFirestore(app);
       '<p class="hint">Chỉ thêm tên vào danh sách. Giảng viên mới tự chọn tên mình và tạo mật khẩu ở lần vào đầu tiên.</p></form></div></section>';
     $('#main').innerHTML = head +
       '<div class="hello"><span>Đang nhập với tên <b>' + esc(me.name) + '</b></span><button class="btn ghost small" type="button" data-act="logout">Đăng xuất</button></div>' + semPick('e') +
-      form + '<div class="field" style="gap:10px"><h3 class="sect-h">Các môn thầy cô đã nhập</h3>' + list + '</div></div></section>' + mgr;
+      form + '<div class="field" style="gap:10px"><h3 class="sect-h">Các môn thầy cô đã nhập · Học kỳ ' + S.hk + ', ' + S.year + '</h3>' + list + '</div></div></section>' + mgr;
   }
 
   /* ---------- Quản trị ---------- */
@@ -782,6 +785,8 @@ const db = getFirestore(app);
     var act = el.getAttribute('data-act'), id = el.getAttribute('data-id');
     try {
       if (act === 'dept') { S.dept = el.getAttribute('data-v'); render(); }
+      else if (act === 'semyear') { S.year = el.getAttribute('data-v'); $('#fYear').value = S.year; S.err = ''; render(); }
+      else if (act === 'semhk') { S.hk = Number(el.getAttribute('data-v')); S.err = ''; render(); }
       else if (act === 'view') { var vv = el.getAttribute('data-v'); S.view = vv === 'all' ? 'all' : Number(vv); render(); }
       else if (act === 'toggle') {
         var open = el.getAttribute('aria-expanded') !== 'true';
