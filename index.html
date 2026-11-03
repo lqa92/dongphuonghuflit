@@ -384,10 +384,11 @@ const db = getFirestore(app);
   var S = { year: '2026–2027', hk: 1, dept: 'all', tab: 'enter', open: {}, err: '', dbErr: '',
     key: null, isAdmin: false, canExcel: false, isManager: false, signedIn: false, authReady: false, teachersLoaded: false,
     au: { mode: 'login', slug: '', email: '', pw: '', pw2: '', dept: 'han', guest: false, err: '', info: '', busy: false },
-    d: { q: '', c: '', cr: 3, nl: 1, p: 100 }, view: 'all' };
+    d: { q: '', c: '', cr: 3, nl: 1, p: 100 }, view: 'all', target: '' };
   var skey = function () { return S.year.replace('–', '-') + '_' + S.hk; };
   var key = function () { return skey(); };
   var semK = function (h) { return S.year.replace('–', '-') + '_' + h; };
+  var adminEdit = function () { return !!S.isAdmin && S.tab === 'admin'; };
   var HCOL = ['#0d0d0d', '#ff5a2b', '#9a9a94'];
   var sq = function (h) { return '<i class="sq" style="background:' + HCOL[h - 1] + '"></i>'; };
   function semPick() {
@@ -573,17 +574,8 @@ const db = getFirestore(app);
       '<p class="err" id="uErr">' + esc(a.err) + '</p><div class="btnrow"><button class="btn" type="submit"' + (a.busy ? ' disabled' : '') + '>Lưu</button><button class="btn ghost" type="button" data-act="logout">Đăng xuất</button></div></form>';
   }
 
-  function renderEnter() {
+  function entryHtml(tid, canEdit) {
     var k = key(), st = statusOf();
-    var head = '<section class="panel"><div class="panel-h"><h2>Nhập môn dạy</h2></div><div class="body">';
-    if (!S.authReady || (S.key && !S.teachersLoaded)) { $('#main').innerHTML = head + '<p class="hint">Đang tải...</p></div></section>'; return; }
-    if (S.signedIn && !S.key) {
-      $('#main').innerHTML = head + '<p class="note">Đang đăng nhập bằng tài khoản quản trị. Tài khoản này dùng ở tab Quản trị. Muốn nhập môn dạy, hãy đăng xuất rồi vào bằng tên thầy cô.</p><div class="btnrow"><button class="btn ghost" type="button" data-act="logout">Đăng xuất</button></div></div></section>'; return;
-    }
-    if (!S.key) { $('#main').innerHTML = head + renderAuth() + '</div></section>'; return; }
-    var me = T[S.key];
-    if (!me) { $('#main').innerHTML = head + renderProfile() + '</div></section>'; return; }
-    var canEdit = st === 'open';
     syncDraftCourse();
     var c = cById(S.d.c), d = S.d;
     var nlOpts = ''; for (var i = 1; i <= 10; i++) nlOpts += '<option value="' + i + '"' + (Number(d.nl) === i ? ' selected' : '') + '>' + i + '</option>';
@@ -600,7 +592,7 @@ const db = getFirestore(app);
       '<div class="btnrow"><button class="btn" type="submit"' + (c ? '' : ' disabled') + '>Thêm môn</button></div></form>' :
       '<p class="note">' + ((st === 'soon' || st === 'unset') ? 'Chưa đến thời gian nhập. Thầy cô quay lại khi khoa mở nhập.' : 'Khoa đã khóa nhập nên không thêm hoặc sửa được. Thầy cô vẫn xem được các môn đã nhập bên dưới.') + '</p>';
 
-    var mine = A.filter(function (a) { return a.sem === k && a.tid === S.key; }).sort(byCourse);
+    var mine = A.filter(function (a) { return a.sem === k && a.tid === tid; }).sort(byCourse);
     var total = mine.reduce(function (s, a) { return s + tiet(a); }, 0);
     var list = !mine.length ? '<p class="hint">Chưa có môn nào trong học kỳ này.</p>' :
       '<ul class="mine">' + mine.map(function (a) {
@@ -611,6 +603,21 @@ const db = getFirestore(app);
         return '<li><span class="nmc"><span>' + esc(cc ? cc.name : '(môn đã xóa)') + '</span><span class="sm">' + a.cr + ' TC · ' + fmt(tiet(a)) + ' tiết' + (a.p < 100 ? ' (' + a.p + '%)' : '') + '</span></span>' + ctl + '</li>';
       }).join('') + '</ul><div class="mine-total"><span>Tổng số lớp học phần</span><span class="v">' + mine.length + ' lớp</span></div><div class="mine-total"><span>Tổng số tiết</span><span class="v">' + fmt(total) + ' tiết</span></div>';
 
+    return semPick('e') + form + '<div class="field" style="gap:10px"><h3 class="sect-h">Các môn đã nhập · Học kỳ ' + S.hk + ', ' + S.year + '</h3>' + list + '</div>';
+  }
+
+  function renderEnter() {
+    var k = key(), st = statusOf();
+    var head = '<section class="panel"><div class="panel-h"><h2>Nhập môn dạy</h2></div><div class="body">';
+    if (!S.authReady || (S.key && !S.teachersLoaded)) { $('#main').innerHTML = head + '<p class="hint">Đang tải...</p></div></section>'; return; }
+    if (S.signedIn && !S.key) {
+      $('#main').innerHTML = head + '<p class="note">Đang đăng nhập bằng tài khoản quản trị. Tài khoản này dùng ở tab Quản trị. Muốn nhập môn dạy, hãy đăng xuất rồi vào bằng tên thầy cô.</p><div class="btnrow"><button class="btn ghost" type="button" data-act="logout">Đăng xuất</button></div></div></section>'; return;
+    }
+    if (!S.key) { $('#main').innerHTML = head + renderAuth() + '</div></section>'; return; }
+    var me = T[S.key];
+    if (!me) { $('#main').innerHTML = head + renderProfile() + '</div></section>'; return; }
+    var canEdit = st === 'open';
+
     var mgr = !S.isManager ? '' :
       '<section class="panel"><div class="panel-h"><h2>Thêm giảng viên vào danh sách</h2></div><div class="body">' +
       '<form data-act="addstaff" class="body" style="padding:0">' +
@@ -620,7 +627,7 @@ const db = getFirestore(app);
       '<p class="hint">Chỉ thêm tên vào danh sách. Giảng viên mới tự chọn tên mình và tạo mật khẩu ở lần vào đầu tiên.</p></form></div></section>';
     $('#main').innerHTML = head +
       '<div class="hello"><span>Đang nhập với tên <b>' + esc(me.name) + '</b></span><button class="btn ghost small" type="button" data-act="logout">Đăng xuất</button></div>' + semPick('e') +
-      form + '<div class="field" style="gap:10px"><h3 class="sect-h">Các môn thầy cô đã nhập · Học kỳ ' + S.hk + ', ' + S.year + '</h3>' + list + '</div></div></section>' + mgr;
+      entryHtml(S.key, canEdit) + '</div></section>' + mgr;
   }
 
   /* ---------- Quản trị ---------- */
@@ -642,6 +649,9 @@ const db = getFirestore(app);
       '<section class="panel"><div class="panel-h"><h2>Mở nhập môn dạy</h2></div><div class="body">' +
       '<p class="note">Hiện tại: <b>' + (st === 'open' ? 'Đang mở nhập' : st === 'locked' ? 'Đã khóa' : 'Chưa mở nhập') + '</b>. Mở thì thầy cô nhập được mọi học kỳ; khóa thì mọi người chỉ xem.</p>' +
       '<div class="btnrow">' + (st === 'open' ? '<button class="btn ghost" data-act="force" data-v="locked">Khóa nhập</button>' : '<button class="btn" data-act="force" data-v="open">Mở nhập</button>') + '</div></div></section>' +
+      '<section class="panel"><div class="panel-h"><h2>Sửa môn dạy giúp thầy cô</h2></div><div class="body">' +
+      '<label class="field"><span>Chọn thầy cô</span><select id="aTarget"><option value="">Chọn thầy cô</option>' + pl.map(function (p) { return '<option value="' + esc(p.id) + '"' + (p.id === S.target ? ' selected' : '') + '>' + esc(p.name) + '</option>'; }).join('') + '</select></label>' +
+      (S.target ? entryHtml(S.target, true) : '<p class="hint">Chọn một thầy cô để thêm, sửa tỷ lệ hoặc xóa môn thay họ. Quản trị viên sửa được cả khi đã khóa nhập.</p>') + '</div></section>' +
       '<section class="panel"><div class="panel-h"><h2>Danh sách thầy cô</h2></div><div class="body">' + peopleHtml +
       '<form data-act="addname" class="body" style="padding:0"><h3 class="sect-h">Thêm tên thầy cô</h3>' +
       '<label class="field"><span>Họ tên</span><input type="text" id="rName" maxlength="60"></label>' +
@@ -717,7 +727,7 @@ const db = getFirestore(app);
       /* Sheet 1: tổng hợp nhanh */
       var q = wb.addWorksheet('Tổng hợp nhanh', { views: [{ state: 'frozen', xSplit: 3, ySplit: 1 }] });
       var qh = ['STT', 'Giảng viên', '', 'Số tiết HK1', 'Số tiết HK2', 'Số tiết HK3', 'Tổng số tiết'];
-      q.columns = [7, 24, 24, 16, 16, 16, 17].map(function (w) { return { width: w, style: { font: FONT } }; });
+      q.columns = [7, 24, 11, 16, 16, 16, 17].map(function (w) { return { width: w, style: { font: FONT } }; });
       q.addRow(qh);
       q.mergeCells(1, 2, 1, 3);
       var qs = [0, 0, 0];
@@ -732,7 +742,7 @@ const db = getFirestore(app);
       markTotal(q, q.rowCount, 4, 7);
       /* Các sheet chi tiết */
       var heads = ['STT', 'Giảng viên', '', 'Môn học', 'Số lớp', 'Số tiết HK1', 'Số tiết HK2', 'Số tiết HK3', 'Tổng số tiết'];
-      var widths = [7, 24, 24, 62, 11, 16, 16, 16, 17];
+      var widths = [7, 24, 11, 62, 11, 16, 16, 16, 17];
       function addSheet(name, filter) {
         var ws = wb.addWorksheet(name, { views: [{ state: 'frozen', xSplit: 3, ySplit: 1 }] });
         ws.columns = widths.map(function (w) { return { width: w, style: { font: FONT } }; });
@@ -818,7 +828,7 @@ const db = getFirestore(app);
       }
       else if (act === 'delname') { await deleteDoc(doc(db, 'roster', id)); }
       else if (act === 'del') {
-        if (statusOf() !== 'open') return;
+        if (statusOf() !== 'open' && !adminEdit()) return;
         await deleteDoc(doc(db, 'assignments', id));
       }
       else if (act === 'force') {
@@ -844,7 +854,8 @@ const db = getFirestore(app);
   main.addEventListener('change', async function (e) {
     var el = e.target, act = el.getAttribute('data-act');
     try {
-      if (el.id === 'eYear' || el.id === 'aYear') { S.year = el.value; $('#fYear').value = S.year; render(); }
+      if (el.id === 'aTarget') { S.target = el.value; S.err = ''; render(); }
+      else if (el.id === 'eYear' || el.id === 'aYear') { S.year = el.value; $('#fYear').value = S.year; render(); }
       else if (el.id === 'eHk' || el.id === 'aHk') { S.hk = Number(el.value); render(); }
       else if (el.id === 'uSlug') { var pp = personOf(el.value); S.au.slug = el.value; S.au.dept = pp && pp.dept ? pp.dept : 'han'; S.au.mode = pp && pp.registered ? (pp.pw ? 'login' : 'recreate') : 'create'; S.au.err = ''; S.au.pw = ''; S.au.pw2 = ''; render(); }
       else if (el.id === 'uDept') S.au.dept = el.value;
@@ -856,7 +867,7 @@ const db = getFirestore(app);
         S.err = ''; render();
       }
       else if (act === 'edit') {
-        if (statusOf() !== 'open') return;
+        if (statusOf() !== 'open' && !adminEdit()) return;
         var n = Math.round(Number(el.value));
         if (n >= 1 && n <= 100) await updateDoc(doc(db, 'assignments', el.getAttribute('data-id')), { p: n });
         else render();
@@ -923,13 +934,14 @@ const db = getFirestore(app);
         await setDoc(doc(db, 'roster', kk), { name: nn });
         $('#rName').value = '';
       } else if (act === 'add') {
-        if (statusOf() !== 'open' || !S.key) return;
+        var tid = adminEdit() && S.target ? S.target : S.key;
+        if ((statusOf() !== 'open' && !adminEdit()) || !tid) return;
         var d = S.d, p = Math.round(Number(d.p));
         if (!d.c) { S.err = 'Chọn một môn trước.'; return render(); }
         if (!(p >= 1 && p <= 100)) { S.err = 'Tỷ lệ giờ dạy cần từ 1 đến 100.'; return render(); }
         S.err = '';
         for (var i = 0; i < Number(d.nl); i++) {
-          await addDoc(collection(db, 'assignments'), { sem: key(), tid: S.key, c: d.c, cr: Number(d.cr), p: p });
+          await addDoc(collection(db, 'assignments'), { sem: key(), tid: tid, c: d.c, cr: Number(d.cr), p: p });
         }
         d.nl = 1; d.p = 100;
       } else if (act === 'addcourse') {
