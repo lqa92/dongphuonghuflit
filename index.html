@@ -707,22 +707,22 @@ const db = getFirestore(app);
       var tietOf = function (pid, h) { return A.filter(function (a) { return a.sem === semK(h) && a.tid === pid; }).reduce(function (s, a) { return s + tiet(a); }, 0); };
       /* Sheet 1: tổng hợp nhanh */
       var q = wb.addWorksheet('Tổng hợp nhanh', { views: [{ state: 'frozen', xSplit: 0, ySplit: 1 }] });
-      var qh = ['STT', 'Giảng viên', 'Bộ môn', 'Thỉnh giảng', 'Số tiết HK1', 'Số tiết HK2', 'Số tiết HK3', 'Tổng số tiết'];
-      q.columns = [7, 32, 28, 18, 16, 16, 16, 17].map(function (w) { return { width: w, style: { font: FONT } }; });
+      var qh = ['STT', 'Giảng viên', 'Bộ môn', 'Số tiết HK1', 'Số tiết HK2', 'Số tiết HK3', 'Tổng số tiết'];
+      q.columns = [7, 40, 28, 16, 16, 16, 17].map(function (w) { return { width: w, style: { font: FONT } }; });
       q.addRow(qh);
       var qs = [0, 0, 0];
       ppl.forEach(function (p, i) {
         var t = H3.map(function (h) { return tietOf(p.id, h); });
         t.forEach(function (v, j) { qs[j] += v; });
-        q.addRow([i + 1, p.name, p.dept ? deptOf(p.dept).name : '', p.guest ? 'Thỉnh giảng' : '', t[0], t[1], t[2], t[0] + t[1] + t[2]]);
+        q.addRow([i + 1, (p.name + (p.guest ? ' (GV thỉnh giảng)' : '')), p.dept ? deptOf(p.dept).name : '', t[0], t[1], t[2], t[0] + t[1] + t[2]]);
       });
       q.addRow([]);
-      q.addRow(['', '', '', 'TỔNG CỘNG', qs[0], qs[1], qs[2], qs[0] + qs[1] + qs[2]]);
+      q.addRow(['', '', 'TỔNG CỘNG', qs[0], qs[1], qs[2], qs[0] + qs[1] + qs[2]]);
       styleSheet(q, qh.length);
-      markTotal(q, q.rowCount, 5, 8);
+      markTotal(q, q.rowCount, 4, 7);
       /* Các sheet chi tiết */
-      var heads = ['STT', 'Giảng viên', 'Bộ môn', 'Thỉnh giảng', 'Môn học', 'Tín chỉ', 'Tỷ lệ giờ dạy (%)', 'Số lớp HK1', 'Số lớp HK2', 'Số lớp HK3', 'Số tiết HK1', 'Số tiết HK2', 'Số tiết HK3', 'Tổng số tiết'];
-      var widths = [7, 32, 28, 18, 52, 11, 22, 15, 15, 15, 16, 16, 16, 17];
+      var heads = ['STT', 'Giảng viên', 'Bộ môn', 'Môn học', 'Tín chỉ', 'Tỷ lệ giờ dạy (%)', 'Số lớp HK1', 'Số lớp HK2', 'Số lớp HK3', 'Số tiết HK1', 'Số tiết HK2', 'Số tiết HK3', 'Tổng số tiết'];
+      var widths = [7, 40, 28, 52, 11, 22, 15, 15, 15, 16, 16, 16, 17];
       function addSheet(name, filter) {
         var ws = wb.addWorksheet(name, { views: [{ state: 'frozen', xSplit: 0, ySplit: 1 }] });
         ws.columns = widths.map(function (w) { return { width: w, style: { font: FONT } }; });
@@ -746,20 +746,20 @@ const db = getFirestore(app);
           order.forEach(function (g, i) {
             var o = groups[g], c = cById(o.a.c);
             var z = function (v) { return v || ''; };
-            ws.addRow([i === 0 ? n : '', i === 0 ? p.name : '', i === 0 ? (p.dept ? deptOf(p.dept).name : '') : '', i === 0 && p.guest ? 'Thỉnh giảng' : '', c ? c.name : '(môn đã xóa)', o.a.cr, o.a.p, z(o.nl[0]), z(o.nl[1]), z(o.nl[2]), z(o.t[0]), z(o.t[1]), z(o.t[2]), o.t[0] + o.t[1] + o.t[2]]);
+            ws.addRow([i === 0 ? n : '', i === 0 ? (p.name + (p.guest ? ' (GV thỉnh giảng)' : '')) : '', i === 0 ? (p.dept ? deptOf(p.dept).name : '') : '', c ? c.name : '(môn đã xóa)', o.a.cr, o.a.p, z(o.nl[0]), z(o.nl[1]), z(o.nl[2]), z(o.t[0]), z(o.t[1]), z(o.t[2]), o.t[0] + o.t[1] + o.t[2]]);
             for (var j = 0; j < 3; j++) { tl[j] += o.nl[j]; tt[j] += o.t[j]; }
           });
           if (order.length > 1) merges.push([r0, ws.rowCount]);
           tots.push(ws.rowCount + 1);
-          ws.addRow(['', '', '', '', 'Cộng', '', '', tl[0], tl[1], tl[2], tt[0], tt[1], tt[2], tt[0] + tt[1] + tt[2]]);
+          ws.addRow(['', '', '', 'Cộng', '', '', tl[0], tl[1], tl[2], tt[0], tt[1], tt[2], tt[0] + tt[1] + tt[2]]);
           for (var j = 0; j < 3; j++) { gl[j] += tl[j]; gt[j] += tt[j]; }
         });
         ws.addRow([]);
         tots.push(ws.rowCount + 1);
-        ws.addRow(['', '', '', '', 'TỔNG CỘNG', '', '', gl[0], gl[1], gl[2], gt[0], gt[1], gt[2], gt[0] + gt[1] + gt[2]]);
-        merges.forEach(function (m) { [1, 2, 3, 4].forEach(function (col) { ws.mergeCells(m[0], col, m[1], col); }); });
+        ws.addRow(['', '', '', 'TỔNG CỘNG', '', '', gl[0], gl[1], gl[2], gt[0], gt[1], gt[2], gt[0] + gt[1] + gt[2]]);
+        merges.forEach(function (m) { [1, 2, 3].forEach(function (col) { ws.mergeCells(m[0], col, m[1], col); }); });
         styleSheet(ws, heads.length);
-        tots.forEach(function (rn) { markTotal(ws, rn, 11, 14); });
+        tots.forEach(function (rn) { markTotal(ws, rn, 10, 13); });
       }
       addSheet('Cả khoa', function () { return true; });
       UNITS.forEach(function (d) { addSheet(d.name, function (p) { return p.dept === d.id; }); });
