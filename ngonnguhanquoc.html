@@ -1,4 +1,8 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Sơ đồ cây CTĐT</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -135,6 +139,13 @@ body.linking .card { cursor: pointer; }
 .pool-cards .card { flex: 0 0 var(--slot-w); min-height: 88px; }
 .pool-empty { color: var(--muted); font-size: 12.5px; align-self: center; margin: auto; }
 
+.total-wrap { display: grid; gap: 5px; justify-items: end; }
+.sync { font-size: 12px; color: var(--muted); }
+.sync::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--line); margin-right: 6px; vertical-align: 1px; }
+.sync[data-kind="saved"]::before { background: #3F8F5F; }
+.sync[data-kind="saving"]::before, .sync[data-kind="connecting"]::before { background: #C79A2E; }
+.sync[data-kind="error"] { color: var(--danger); }
+.sync[data-kind="error"]::before { background: var(--danger); }
 .summary { margin-top: 26px; }
 .summary h2 { font-family: var(--f-display); font-weight: 800; font-size: 18px; margin: 0; }
 .summary p { margin: 2px 0 8px; color: var(--muted); font-size: 12.5px; }
@@ -182,13 +193,57 @@ body.linking .card { cursor: pointer; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
+<style>html{color-scheme:light}body{margin:0}
+.lock { position: fixed; inset: 0; z-index: 100; background: var(--bg); display: grid; place-items: center; padding: 16px; }
+.lock-box { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); padding: 26px 24px; width: min(360px, 100%); display: grid; gap: 12px; text-align: center; }
+.lock-box h2 { font-family: var(--f-display); font-weight: 800; font-size: 22px; margin: 0; }
+.lock-box p { margin: 0; color: var(--muted); font-size: 13px; }
+.lock-box input { font: inherit; font-size: 22px; letter-spacing: .4em; text-align: center; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; width: 100%; }
+.lock-box .lock-err { color: var(--danger); font-weight: 600; }
+.lock-box .btn { padding: 10px; font-size: 15px; }
+</style>
+</head>
+<body>
+<div class="lock" id="lock">
+  <form class="lock-box" id="lockForm" autocomplete="off">
+    <h2>Sơ đồ cây CTĐT</h2>
+    <p>Ngành Ngôn ngữ Hàn Quốc · Nhập mật khẩu để vào trang</p>
+    <input id="lockPass" type="password" inputmode="numeric" maxlength="20" aria-label="Mật khẩu">
+    <p class="lock-err" id="lockErr" hidden>Sai mật khẩu, vui lòng thử lại.</p>
+    <button class="btn primary" type="submit">Vào trang</button>
+  </form>
+</div>
+<script>
+(function () {
+  const PASS = "0000";              // ← đổi mật khẩu ở đây
+  const KEY = "ctdt-unlocked";
+  const lock = document.getElementById("lock");
+  let ok = false;
+  try { ok = sessionStorage.getItem(KEY) === PASS; } catch (e) {}
+  if (ok) { lock.remove(); return; }
+  document.documentElement.style.overflow = "hidden";
+  const inp = document.getElementById("lockPass"), err = document.getElementById("lockErr");
+  setTimeout(() => inp.focus(), 0);
+  document.getElementById("lockForm").addEventListener("submit", e => {
+    e.preventDefault();
+    if (inp.value === PASS) {
+      try { sessionStorage.setItem(KEY, PASS); } catch (e) {}
+      lock.remove(); document.documentElement.style.overflow = "";
+    } else { err.hidden = false; inp.value = ""; inp.focus(); }
+  });
+})();
+</script>
+
 
 <header class="top">
   <div>
     <div class="eyebrow">Ngành Ngôn ngữ Hàn Quốc</div>
     <h1>Sơ đồ cây CTĐT · <span class="spec" id="specName"></span></h1>
   </div>
-  <div class="total"><b id="grandTotal">0</b><small>tín chỉ toàn khoá</small></div>
+  <div class="total-wrap">
+    <div class="total"><b id="grandTotal">0</b><small>tín chỉ toàn khoá</small></div>
+    <div class="sync" id="syncStatus" role="status"></div>
+  </div>
 </header>
 
 <nav class="tabs" id="tabs" role="tablist" aria-label="Các trang"></nav>
@@ -347,7 +402,9 @@ body.linking .card { cursor: pointer; }
   let paint = null;
   let linkSel = null; // Set of card ids while linking
   const page = () => S.pages[S.active];
-  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+  let pendingRemote = null;
+  function saveLocal() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+  function save() { saveLocal(); pendingRemote = null; if (window.CTDT && window.CTDT.push) window.CTDT.push(JSON.stringify({ pages: S.pages })); }
   function snap() { hist.push(JSON.stringify(S)); if (hist.length > 80) hist.shift(); }
   function commit() { S.pages.forEach(tidy); save(); render(); }
   function undo() { if (!hist.length) { toast("Không còn thao tác để hoàn tác"); return; } S = JSON.parse(hist.pop()); commit(); toast("Đã hoàn tác"); }
@@ -680,7 +737,10 @@ body.linking .card { cursor: pointer; }
     bind && bind(root.querySelector(".modal"));
     const f = root.querySelector("textarea, input[type=text]"); if (f) setTimeout(() => f.focus(), 0);
   }
-  function closeModal() { $("modalRoot").innerHTML = ""; if (onKey) document.removeEventListener("keydown", onKey); onKey = null; }
+  function closeModal() {
+    $("modalRoot").innerHTML = ""; if (onKey) document.removeEventListener("keydown", onKey); onKey = null;
+    if (pendingRemote) { const s = pendingRemote; pendingRemote = null; setTimeout(() => applyRemote(s), 0); }
+  }
 
   function editor(card, title, onSave, extra) {
     const p = page();
@@ -826,7 +886,7 @@ body.linking .card { cursor: pointer; }
   $("btnBackup").onclick = () => {
     openModal(`
       <h3>Sao lưu / Khôi phục</h3>
-      <p style="margin:0;color:var(--muted);font-size:13px">Dữ liệu chỉ lưu trên trình duyệt này. Muốn chuyển sang máy khác, sao chép đoạn mã bên dưới rồi dán vào ô này ở máy kia và bấm “Nạp dữ liệu”.</p>
+      <p style="margin:0;color:var(--muted);font-size:13px">Dữ liệu đã tự lưu lên Firebase. Phần này dùng để tải một bản sao dự phòng: sao chép đoạn mã bên dưới và cất lại; khi cần, dán vào đây rồi bấm “Nạp dữ liệu”.</p>
       <textarea id="bk-text" rows="8" spellcheck="false" style="font-size:12px"></textarea>
       <div class="actions">
         <div><button type="button" class="btn danger" id="bk-reset">Khôi phục 3 trang gốc</button></div>
@@ -858,8 +918,83 @@ body.linking .card { cursor: pointer; }
     if (e.key === "Escape") { if (paint) { paint = null; render(); } else if (linkSel) { linkSel = null; render(); } }
   });
 
+  /* ---------- Firebase sync hooks ---------- */
+  function applyRemote(str) {
+    let d; try { d = JSON.parse(str); } catch (e) { return; }
+    if (!valid(d)) return;
+    if ($("modalRoot").innerHTML || document.body.classList.contains("is-dragging")) { pendingRemote = str; return; }
+    d.active = S.active; S = normalize(d); hist = []; saveLocal(); render();
+  }
+  const STATUS = {
+    local: "Chưa kết nối Firebase · chỉ lưu trên máy này",
+    connecting: "Đang kết nối Firebase…",
+    saving: "Đang lưu…",
+    saved: "Đã lưu lên Firebase",
+    error: "Không lưu được lên Firebase · đang lưu tạm trên máy"
+  };
+  window.CTDT = {
+    applyRemote,
+    current: () => JSON.stringify({ pages: S.pages }),
+    setStatus(kind) { const el = $("syncStatus"); if (el) { el.textContent = STATUS[kind] || kind; el.dataset.kind = kind; } }
+  };
+  window.CTDT.setStatus("connecting");
   render();
 })();
 </script>
 
-</body></html>
+<!-- ===================== FIREBASE: lưu dữ liệu thời gian thực ===================== -->
+<script type="module">
+  // ▼▼▼ DÁN firebaseConfig CỦA BẠN VÀO ĐÂY (thay toàn bộ khối bên dưới) ▼▼▼
+  const firebaseConfig = {
+    apiKey: "",
+    authDomain: "",
+    projectId: "",
+    storageBucket: "",
+    messagingSenderId: "",
+    appId: ""
+  };
+  // ▲▲▲ HẾT PHẦN CẦN DÁN ▲▲▲
+
+  const COLLECTION = "ctdt";                       // tên collection trong Firestore
+  const DOC_ID = "nganh-ngon-ngu-han-quoc";        // tên tài liệu lưu sơ đồ
+
+  const CTDT = window.CTDT;
+  if (!firebaseConfig.projectId) {
+    CTDT.setStatus("local");
+  } else {
+    try {
+      const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
+      const { getFirestore, doc, onSnapshot, setDoc, serverTimestamp } =
+        await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      const ref = doc(db, COLLECTION, DOC_ID);
+
+      let lastSent = null, timer = null, first = true;
+      CTDT.push = json => {
+        CTDT.setStatus("saving");
+        clearTimeout(timer);
+        timer = setTimeout(async () => {
+          lastSent = json;
+          try { await setDoc(ref, { data: json, updatedAt: serverTimestamp() }); CTDT.setStatus("saved"); }
+          catch (e) { console.error(e); CTDT.setStatus("error"); }
+        }, 500);
+      };
+      onSnapshot(ref, snap => {
+        if (!snap.exists()) {               // lần đầu: đưa dữ liệu hiện có lên Firebase
+          if (first) { first = false; CTDT.push(CTDT.current()); }
+          return;
+        }
+        first = false;
+        if (snap.metadata.hasPendingWrites) return;
+        const data = snap.data().data;
+        if (data !== lastSent && data !== CTDT.current()) CTDT.applyRemote(data);
+        CTDT.setStatus("saved");
+      }, err => { console.error(err); CTDT.setStatus("error"); });
+    } catch (e) {
+      console.error(e); CTDT.setStatus("error");
+    }
+  }
+</script>
+</body>
+</html>
