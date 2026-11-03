@@ -264,6 +264,7 @@ body { padding:0; }
 .sempick { display:flex; flex-direction:column; gap:10px; padding:14px 0; border-top:1.5px solid #0d0d0d; border-bottom:1.5px solid #0d0d0d; }
 .sp-row { display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; }
 .sp-row .vl { min-width:72px; }
+.hks b { color:#0d0d0d; font-weight:700; }
 </style>
 
 <style>body{margin:0}[hidden]{display:none!important}</style>
@@ -482,7 +483,7 @@ const db = getFirestore(app);
           if (w > 0) segs += '<span class="fill" style="left:' + x + '%;width:' + w + '%;background:' + HCOL[h - 1] + '"></span>';
           x += w;
         });
-        var hks = S.view === 'all' && r.total ? '<span class="hks">' + [1, 2, 3].map(function (h) { return sq(h) + 'HK' + h + ' ' + (r.per[h].total ? fmt(r.per[h].total) : '—'); }).join('  ·  ') + '</span>' : '';
+        var hks = S.view === 'all' && r.total ? '<span class="hks">' + [1, 2, 3].map(function (h) { return sq(h) + 'HK' + h + ': <b>' + (r.per[h].total ? fmt(r.per[h].total) : '—') + '</b>'; }).join('  ·  ') + '</span>' : '';
         return '<div class="row" data-dept="' + (r.t.dept || '') + '">' +
           '<button class="row-btn" data-act="toggle" data-id="' + esc(r.t.id) + '" aria-expanded="' + open + '">' +
           '<span class="who"><span class="nm">' + esc(r.t.name) + '</span><span class="meta"><i class="dot"></i>' + (r.t.registered ? deptOf(r.t.dept).short + ' · ' + (r.total ? r.n + ' lớp' : 'Chưa nhập') : 'Chưa đăng nhập lần nào') + (r.t.guest ? ' <span class="guest">Thỉnh giảng</span>' : '') + '</span>' + hks + '</span>' +
@@ -696,11 +697,18 @@ const db = getFirestore(app);
         });
         ws.getRow(1).height = 24;
       }
+      function markTotal(ws, rn, c1, c2) {
+        for (var c = c1; c <= c2; c++) {
+          var cell = ws.getRow(rn).getCell(c);
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9D9D9' } };
+          cell.font = { name: FONT.name, size: FONT.size, bold: true, underline: true };
+        }
+      }
       var tietOf = function (pid, h) { return A.filter(function (a) { return a.sem === semK(h) && a.tid === pid; }).reduce(function (s, a) { return s + tiet(a); }, 0); };
       /* Sheet 1: tổng hợp nhanh */
       var q = wb.addWorksheet('Tổng hợp nhanh', { views: [{ state: 'frozen', xSplit: 0, ySplit: 1 }] });
       var qh = ['STT', 'Giảng viên', 'Bộ môn', 'Thỉnh giảng', 'Số tiết HK1', 'Số tiết HK2', 'Số tiết HK3', 'Tổng số tiết'];
-      q.columns = [6, 28, 24, 14, 13, 13, 13, 14].map(function (w) { return { width: w, style: { font: FONT } }; });
+      q.columns = [7, 32, 28, 18, 16, 16, 16, 17].map(function (w) { return { width: w, style: { font: FONT } }; });
       q.addRow(qh);
       var qs = [0, 0, 0];
       ppl.forEach(function (p, i) {
@@ -711,14 +719,15 @@ const db = getFirestore(app);
       q.addRow([]);
       q.addRow(['', '', '', 'TỔNG CỘNG', qs[0], qs[1], qs[2], qs[0] + qs[1] + qs[2]]);
       styleSheet(q, qh.length);
+      markTotal(q, q.rowCount, 5, 8);
       /* Các sheet chi tiết */
       var heads = ['STT', 'Giảng viên', 'Bộ môn', 'Thỉnh giảng', 'Môn học', 'Tín chỉ', 'Tỷ lệ giờ dạy (%)', 'Số lớp HK1', 'Số lớp HK2', 'Số lớp HK3', 'Số tiết HK1', 'Số tiết HK2', 'Số tiết HK3', 'Tổng số tiết'];
-      var widths = [6, 28, 24, 14, 46, 9, 14, 10, 10, 10, 11, 11, 11, 13];
+      var widths = [7, 32, 28, 18, 52, 11, 22, 15, 15, 15, 16, 16, 16, 17];
       function addSheet(name, filter) {
         var ws = wb.addWorksheet(name, { views: [{ state: 'frozen', xSplit: 0, ySplit: 1 }] });
         ws.columns = widths.map(function (w) { return { width: w, style: { font: FONT } }; });
         ws.addRow(heads);
-        var n = 0, gl = [0, 0, 0], gt = [0, 0, 0], merges = [];
+        var n = 0, gl = [0, 0, 0], gt = [0, 0, 0], merges = [], tots = [];
         ppl.filter(filter).forEach(function (p) {
           var groups = {}, order = [], any = false;
           H3.forEach(function (h) {
@@ -731,7 +740,8 @@ const db = getFirestore(app);
           });
           if (!any) return;
           n++;
-          order.sort(function (x, y) { return byCourse(groups[x].a, groups[y].a); });
+          var firstH = function (g) { return groups[g].nl[0] ? 1 : groups[g].nl[1] ? 2 : 3; };
+          order.sort(function (x, y) { return firstH(x) - firstH(y) || byCourse(groups[x].a, groups[y].a); });
           var tl = [0, 0, 0], tt = [0, 0, 0], r0 = ws.rowCount + 1;
           order.forEach(function (g, i) {
             var o = groups[g], c = cById(o.a.c);
@@ -740,13 +750,16 @@ const db = getFirestore(app);
             for (var j = 0; j < 3; j++) { tl[j] += o.nl[j]; tt[j] += o.t[j]; }
           });
           if (order.length > 1) merges.push([r0, ws.rowCount]);
+          tots.push(ws.rowCount + 1);
           ws.addRow(['', '', '', '', 'Cộng', '', '', tl[0], tl[1], tl[2], tt[0], tt[1], tt[2], tt[0] + tt[1] + tt[2]]);
           for (var j = 0; j < 3; j++) { gl[j] += tl[j]; gt[j] += tt[j]; }
         });
         ws.addRow([]);
+        tots.push(ws.rowCount + 1);
         ws.addRow(['', '', '', '', 'TỔNG CỘNG', '', '', gl[0], gl[1], gl[2], gt[0], gt[1], gt[2], gt[0] + gt[1] + gt[2]]);
         merges.forEach(function (m) { [1, 2, 3, 4].forEach(function (col) { ws.mergeCells(m[0], col, m[1], col); }); });
         styleSheet(ws, heads.length);
+        tots.forEach(function (rn) { markTotal(ws, rn, 11, 14); });
       }
       addSheet('Cả khoa', function () { return true; });
       UNITS.forEach(function (d) { addSheet(d.name, function (p) { return p.dept === d.id; }); });
