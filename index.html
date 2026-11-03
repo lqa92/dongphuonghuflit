@@ -332,7 +332,7 @@ const db = getFirestore(app);
   var $ = function (s) { return document.querySelector(s); };
   var esc = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); };
   var fmt = function (n) { return Number(n).toLocaleString('vi-VN', { maximumFractionDigits: 1 }); };
-  var fd = function (iso) { return iso.split('-').reverse().join('/'); };
+  var fd = function (iso) { return iso ? iso.split('-').reverse().join('/') : ''; };
   var today = function () { return new Date().toLocaleDateString('en-CA'); };
 
   var DEPTS = [
@@ -420,7 +420,7 @@ const db = getFirestore(app);
     if (S.dbErr) h += '<div class="status locked"><b>Chưa đọc được dữ liệu</b><span>' + esc(S.dbErr === 'permission-denied' ? 'Rules của Firestore chưa đúng hoặc chưa Publish.' : 'Mã lỗi: ' + S.dbErr) + '</span></div>';
     if (S.tab === 'sum') { $('#status').innerHTML = h; return; }
     var st = statusOf(), s = SEM[skey()] || {};
-    if (st === 'open') h += '<div class="status open"><b>HK' + S.hk + ' · Đang mở nhập</b><span>Thầy cô tự nhập đến hết ngày ' + fd(s.close) + '.</span></div>';
+    if (st === 'open') h += '<div class="status open"><b>HK' + S.hk + ' · Đang mở nhập</b><span>' + (s.close ? 'Thầy cô tự nhập đến hết ngày ' + fd(s.close) + '.' : 'Thầy cô nhập được ngay bây giờ.') + '</span></div>';
     else if (st === 'soon') h += '<div class="status soon"><b>HK' + S.hk + ' · Chưa mở nhập</b><span>Mở từ ' + fd(s.open) + ' đến ' + fd(s.close) + '.</span></div>';
     else if (st === 'unset') h += '<div class="status soon"><b>HK' + S.hk + ' · Chưa mở nhập</b><span>Khoa chưa đặt thời hạn nhập cho học kỳ này.</span></div>';
     else h += '<div class="status locked"><b>HK' + S.hk + ' · Đã khóa</b><span>Học kỳ này chỉ xem, không sửa được. Liên hệ khoa nếu cần chỉnh.</span></div>';
