@@ -266,6 +266,7 @@ body.linking .card { cursor: pointer; }
     <span class="paint-note" id="paintNote" hidden>Bấm vào môn để tô · bấm lại ô màu để tắt</span>
   </div>
   <div class="group">
+    <button class="btn primary" id="btnPdf" type="button">Tải PDF</button>
     <button class="btn" id="btnBackup" type="button">Sao lưu / Khôi phục</button>
   </div>
 </div>
@@ -528,8 +529,8 @@ body.linking .card { cursor: pointer; }
       <tfoot><tr><td>Tổng cộng</td><td class="num">${N}</td><td class="num">${T}</td></tr></tfoot>`;
   }
 
-  function drawFrames() {
-    const grid = $("grid"), p = page();
+  function drawFrames(grid = $("grid")) {
+    const p = page();
     grid.querySelectorAll(".gframe, .glinks, .gchip, .oframe").forEach(e => e.remove());
     const slotAt = (r, s) => grid.querySelector(`.slot[data-r="${r}"][data-s="${s}"]`);
     const keys = gKeys(p); if (!keys.length) return;
@@ -550,7 +551,7 @@ body.linking .card { cursor: pointer; }
         const b = grid.querySelector(`.slot[data-r="${run.r}"][data-s="${run.s1}"]`);
         const box = { x: a.offsetLeft - 5, y: a.offsetTop - 6, w: b.offsetLeft + b.offsetWidth - a.offsetLeft + 10, h: a.offsetHeight + 12 };
         const f = document.createElement("div");
-        f.className = "gframe"; f.dataset.g = g; f.style.setProperty("--g", color);
+        f.className = "gframe"; f.dataset.g = g; f.style.setProperty("--g", color); f.style.background = color + "17";
         Object.assign(f.style, { left: box.x + "px", top: box.y + "px", width: box.w + "px", height: box.h + "px" });
         if (i === 0) f.innerHTML = `<span class="glabel">${gLetter(p, g)} · Chọn 1 trong ${n} · ${gCredits(p, g)} TC</span>`;
         grid.prepend(f);
@@ -917,6 +918,67 @@ body.linking .card { cursor: pointer; }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") { e.preventDefault(); undo(); }
     if (e.key === "Escape") { if (paint) { paint = null; render(); } else if (linkSel) { linkSel = null; render(); } }
   });
+
+  /* ---------- PDF export ---------- */
+  const LIBS = [
+    ["html2canvas", "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"],
+    ["jspdf", "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"]
+  ];
+  function loadScript(src) {
+    return new Promise((ok, fail) => { const sc = document.createElement("script"); sc.src = src; sc.onload = ok; sc.onerror = () => fail(new Error("Không tải được " + src)); document.head.append(sc); });
+  }
+  async function ensureLibs() { for (const [g, src] of LIBS) if (!window[g]) await loadScript(src); }
+  const PDF_FIX = `.card,.sumtable .chip{border-color:rgba(0,0,0,.3)!important;filter:none!important}
+    .slot-add{color:transparent!important}.ghost{display:none!important}`;
+  const nextFrame = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+  async function exportPdf() {
+    const btn = $("btnPdf"); if (btn.disabled) return;
+    btn.disabled = true; btn.textContent = "Đang tạo PDF…";
+    const root = document.documentElement, prevTheme = root.getAttribute("data-theme");
+    root.setAttribute("data-theme", "light");
+    let holder = null;
+    try {
+      await ensureLibs();
+      render(); await nextFrame();
+      const p = page(), grid = $("grid");
+      const PW = 420, PH = 297, M = 5, RATIO = (PW - 2 * M) / (PH - 2 * M);
+      holder = document.createElement("div");
+      holder.style.cssText = "position:fixed;left:-30000px;top:0;background:#F7F8F6;padding:22px 24px;box-sizing:border-box;font-family:var(--f-body);color:#22292B";
+      holder.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:30px">
+          <div><div class="eyebrow">Ngành Ngôn ngữ Hàn Quốc</div>
+          <h1 style="margin:4px 0 0">Sơ đồ cây CTĐT · <span class="spec">${esc(p.name)}</span></h1></div>
+          <div class="total"><b>${$("grandTotal").textContent}</b><small>tín chỉ toàn khoá</small></div></div>`;
+      const g2 = grid.cloneNode(true); g2.removeAttribute("id"); holder.append(g2);
+      document.body.append(holder);
+      // widen the sheet until its shape matches A3 landscape, so the tree fills the page
+      let w = grid.offsetWidth + 48;
+      for (let k = 0; k < 4; k++) {
+        holder.style.width = w + "px"; await nextFrame();
+        const need = Math.round(holder.offsetHeight * RATIO);
+        if (Math.abs(need - w) < 6 || need < w) break;
+        w = need;
+      }
+      drawFrames(g2); await nextFrame();
+      const canvas = await window.html2canvas(holder, { scale: 2, backgroundColor: "#F7F8F6", logging: false,
+        onclone: d => { const st = d.createElement("style"); st.textContent = PDF_FIX; d.head.append(st); } });
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a3", compress: true });
+      pdf.setFillColor(247, 248, 246); pdf.rect(0, 0, PW, PH, "F");
+      const r = Math.min((PW - 2 * M) / canvas.width, (PH - 2 * M) / canvas.height);
+      const iw = canvas.width * r, ih = canvas.height * r;
+      pdf.addImage(canvas.toDataURL("image/jpeg", 0.93), "JPEG", (PW - iw) / 2, (PH - ih) / 2, iw, ih);
+      const fname = ("So do cay CTDT - " + p.name).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").replace(/[^\w\- ()]+/g, "").trim() + ".pdf";
+      pdf.save(fname);
+      toast("Đã tải PDF");
+    } catch (e) {
+      console.error(e); toast("Không tạo được PDF. Kiểm tra kết nối mạng rồi thử lại.");
+    } finally {
+      if (holder) holder.remove();
+      if (prevTheme === null) root.removeAttribute("data-theme"); else root.setAttribute("data-theme", prevTheme);
+      btn.disabled = false; btn.textContent = "Tải PDF"; render();
+    }
+  }
+  $("btnPdf").onclick = exportPdf;
 
   /* ---------- Firebase sync hooks ---------- */
   function applyRemote(str) {
