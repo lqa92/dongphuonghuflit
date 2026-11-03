@@ -1,0 +1,865 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Sơ đồ cây CTĐT</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap">
+<style>
+/* Layout: a planning board — semester label column that totals credits, ten fixed column slots per row (columns line up like the original tree), dashed frames tie elective groups together, a tray below for loose courses. */
+:root {
+  --bg: #E8ECEA;
+  --surface: #F7F8F6;
+  --ink: #22292B;
+  --muted: #5D686B;
+  --line: #BFC8C6;
+  --slot: #EFF2F0;
+  --accent: #2F5D62;
+  --accent-ink: #F3F7F6;
+  --danger: #9A3B32;
+  --card-ink: #2B2620;
+  --card-filter: none;
+  --shadow: 0 1px 0 rgba(20,30,30,.06), 0 8px 22px rgba(20,40,40,.10);
+  --f-display: "Bricolage Grotesque", "Be Vietnam Pro", system-ui, sans-serif;
+  --f-body: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --label-w: 98px;
+  --slot-w: 108px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161B1C; --surface: #1F2627; --ink: #E5E8E4; --muted: #9AA5A4; --line: #3A4547;
+    --slot: #1B2122; --accent: #8DBAB4; --accent-ink: #0F1F1E; --danger: #E08B7F;
+    --card-filter: brightness(.9) saturate(.95);
+    --shadow: 0 1px 0 rgba(0,0,0,.3), 0 10px 26px rgba(0,0,0,.4);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161B1C; --surface: #1F2627; --ink: #E5E8E4; --muted: #9AA5A4; --line: #3A4547;
+  --slot: #1B2122; --accent: #8DBAB4; --accent-ink: #0F1F1E; --danger: #E08B7F;
+  --card-filter: brightness(.9) saturate(.95);
+  --shadow: 0 1px 0 rgba(0,0,0,.3), 0 10px 26px rgba(0,0,0,.4);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 14px; line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 140px;
+}
+body.is-dragging { cursor: grabbing; user-select: none; }
+button, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; margin-bottom: 14px; }
+.eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+h1 { font-family: var(--f-display); font-weight: 800; font-size: clamp(22px, 3.2vw, 32px); line-height: 1.1; margin: 4px 0 0; text-wrap: balance; }
+h1 .spec { color: var(--accent); }
+.total { display: flex; align-items: baseline; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; }
+.total b { font-family: var(--f-display); font-size: 28px; font-variant-numeric: tabular-nums; }
+.total small { color: var(--muted); font-size: 12px; }
+
+.tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; border-bottom: 1px solid var(--line); }
+.tab { flex: none; border: 1px solid var(--line); border-bottom: none; background: transparent; border-radius: 8px 8px 0 0; padding: 8px 14px; cursor: pointer; color: var(--muted); font-weight: 500; white-space: nowrap; }
+.tab:hover { color: var(--ink); }
+.tab[aria-selected="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: inset 0 3px 0 var(--accent); }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding: 12px 0; }
+.group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.group-label { font-size: 12px; color: var(--muted); margin-right: 2px; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 6px 11px; cursor: pointer; font-size: 13px; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.btn.danger { color: var(--danger); }
+.btn[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.btn:disabled { opacity: .45; cursor: default; }
+.sw { width: 24px; height: 24px; border-radius: 6px; border: 1.5px solid color-mix(in srgb, var(--c) 62%, #000); background: var(--c); cursor: pointer; filter: var(--card-filter); padding: 0; }
+.sw[aria-pressed="true"] { outline: 2.5px solid var(--ink); outline-offset: 2px; }
+.paint-note { font-size: 12px; color: var(--accent); font-weight: 600; }
+
+.hint { margin: 0 0 10px; color: var(--muted); font-size: 12.5px; max-width: 110ch; }
+
+.gridwrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 30px 14px 14px; }
+.grid { position: relative; display: grid; grid-template-columns: var(--label-w) repeat(12, minmax(var(--slot-w), 1fr)); column-gap: 14px; row-gap: 36px;
+  min-width: calc(var(--label-w) + 12 * var(--slot-w) + 12 * 14px); }
+.hk { position: relative; z-index: 1; border: 1.5px solid var(--ink); border-radius: 12px; background: var(--surface); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 8px 4px; cursor: pointer; min-height: 88px; }
+.hk:hover { border-color: var(--accent); }
+.hk-name { font-family: var(--f-display); font-weight: 800; font-size: 17px; line-height: 1.1; text-align: center; }
+.hk-tc { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 13px; background: var(--accent); color: var(--accent-ink); border-radius: 999px; padding: 1px 9px; }
+.hk-tc.zero { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+
+.slot { position: relative; z-index: 1; min-height: 88px; border: 1.5px dashed var(--line); border-radius: 8px; background: var(--slot); display: flex; }
+.slot.over, .pool-cards.over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--slot)); }
+.slot-add { flex: 1; border: 0; background: transparent; color: transparent; font-size: 22px; cursor: pointer; border-radius: 8px; }
+.slot:hover .slot-add, .slot-add:focus-visible { color: var(--muted); }
+
+.card { --c: #E2DDD3; flex: 1; position: relative; background: var(--c); color: var(--card-ink); filter: var(--card-filter);
+  border: 1.5px solid color-mix(in srgb, var(--c) 58%, #000); border-radius: 7px; padding: 8px 7px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; text-align: center;
+  font-size: 12px; line-height: 1.3; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
+  box-shadow: 0 1px 0 rgba(0,0,0,.08); }
+.card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.16); }
+.card.dragging { opacity: .3; }
+.card .tag { font-size: 10px; font-weight: 700; letter-spacing: .03em; background: rgba(255,255,255,.55); border: 1px solid rgba(0,0,0,.18); border-radius: 999px; padding: 0 6px; }
+.card .nm { font-weight: 500; }
+.card .sep { width: 70%; border-top: 1px dashed rgba(0,0,0,.35); margin: 1px 0; }
+.card .cr { font-variant-numeric: tabular-nums; font-size: 11.5px; opacity: .85; }
+.card .cr.nc { font-style: italic; font-size: 10.5px; }
+.card .gdot { position: absolute; top: -8px; right: -8px; width: 19px; height: 19px; border-radius: 50%; background: var(--g); color: #fff; font-size: 10.5px; font-weight: 700;
+  display: grid; place-items: center; border: 2px solid var(--surface); }
+.card.glow { outline: 2.5px solid var(--g); outline-offset: 2px; }
+.card.selected { outline: 3px solid var(--accent); outline-offset: 2px; }
+.card.selected::after { content: "✓"; position: absolute; top: -9px; left: -9px; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font-size: 12px; font-weight: 700; display: grid; place-items: center; }
+.ghost { position: fixed; top: 0; left: 0; z-index: 50; pointer-events: none; box-shadow: var(--shadow); opacity: .95; margin: 0; }
+body.painting .card { cursor: copy; }
+body.linking .card { cursor: pointer; }
+
+/* elective group frames */
+.gframe { position: absolute; z-index: 0; border: 2px dashed var(--g); border-radius: 12px; pointer-events: none;
+  background: color-mix(in srgb, var(--g) 9%, transparent); transition: border-style .1s, background .1s; }
+.gframe.glow { border-style: solid; background: color-mix(in srgb, var(--g) 18%, transparent); }
+.glabel { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 11px; font-weight: 700; color: var(--surface);
+  background: var(--g); border-radius: 999px; padding: 1px 9px; }
+.gchip { position: absolute; z-index: 3; transform: translate(-50%, -50%); background: var(--g); color: #fff; font-size: 10.5px; font-weight: 700;
+  border-radius: 999px; padding: 1px 6px; border: 2px solid var(--surface); white-space: nowrap; }
+.gchip.plus { font-size: 13px; line-height: 15px; padding: 0 5px; }
+.oframe { position: absolute; z-index: 0; border: 1.5px solid var(--g); border-radius: 10px; pointer-events: none; }
+.glinks { position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none; overflow: visible; }
+
+.under { display: flex; gap: 8px; margin-top: 10px; }
+.pool { margin-top: 22px; }
+.pool h2 { font-family: var(--f-display); font-weight: 800; font-size: 18px; margin: 0; }
+.pool p { margin: 2px 0 8px; color: var(--muted); font-size: 12.5px; }
+.pool-cards { display: flex; flex-wrap: wrap; gap: 12px; min-height: 110px; padding: 12px; border: 1.5px dashed var(--line); border-radius: 12px; background: var(--slot); }
+.pool-cards .card { flex: 0 0 var(--slot-w); min-height: 88px; }
+.pool-empty { color: var(--muted); font-size: 12.5px; align-self: center; margin: auto; }
+
+.summary { margin-top: 26px; }
+.summary h2 { font-family: var(--f-display); font-weight: 800; font-size: 18px; margin: 0; }
+.summary p { margin: 2px 0 8px; color: var(--muted); font-size: 12.5px; }
+.sumwrap { overflow-x: auto; max-width: 720px; }
+.sumtable { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-variant-numeric: tabular-nums; }
+.sumtable th, .sumtable td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--line); }
+.sumtable th { font-size: 12px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.sumtable td.num, .sumtable th.num { text-align: right; }
+.sumtable tfoot td { font-weight: 700; border-bottom: 0; }
+.sumtable .chip { display: inline-block; width: 26px; height: 18px; border-radius: 5px; vertical-align: middle; margin-right: 8px; background: var(--c); border: 1.5px solid color-mix(in srgb, var(--c) 58%, #000); filter: var(--card-filter); }
+.trash { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 40;
+  background: var(--surface); color: var(--danger); border: 2px dashed var(--danger); border-radius: 12px; padding: 14px 28px; font-weight: 600; box-shadow: var(--shadow); }
+.trash.over { background: color-mix(in srgb, var(--danger) 18%, var(--surface)); }
+
+.linkbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 45;
+  background: var(--surface); border: 1.5px solid var(--accent); border-radius: 14px; box-shadow: var(--shadow); padding: 10px 12px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: max-content; max-width: calc(100vw - 32px); }
+.linkbar b { font-variant-numeric: tabular-nums; }
+.linkbar span { font-size: 13px; }
+
+.overlay { position: fixed; inset: 0; z-index: 60; background: rgba(10,16,16,.45); display: flex; align-items: center; justify-content: center;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.modal { background: var(--surface); color: var(--ink); border-radius: 14px; box-shadow: var(--shadow); width: min(480px, 100%); max-height: 100%; overflow-y: auto; padding: 18px; display: grid; gap: 12px; }
+.modal h3 { font-family: var(--f-display); font-weight: 800; font-size: 19px; margin: 0; }
+.modal label { display: grid; gap: 4px; font-size: 13px; font-weight: 500; }
+.modal small { color: var(--muted); font-weight: 400; }
+.modal input[type=text], .modal input[type=number], .modal textarea, .modal select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; width: 100%; }
+.modal textarea { resize: vertical; }
+.modal .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.modal .chk { display: flex; align-items: center; gap: 8px; font-weight: 400; }
+.modal .sw-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.modal .sw { width: 30px; height: 30px; }
+.modal input[type=color] { width: 34px; height: 30px; border: 1px solid var(--line); border-radius: 6px; background: transparent; padding: 1px; cursor: pointer; }
+.modal .actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
+.modal .actions > div { display: flex; gap: 8px; flex-wrap: wrap; }
+.preview { display: flex; justify-content: center; padding: 14px; background: var(--slot); border-radius: 10px; }
+.preview .card { flex: 0 0 150px; min-height: 88px; cursor: default; }
+.sw-names, .note { font-size: 12px; color: var(--muted); }
+
+.toast { position: fixed; left: 50%; top: calc(16px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); z-index: 70; background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: 10px; font-size: 13px; box-shadow: var(--shadow); }
+
+@media (max-width: 640px) {
+  :root { --label-w: 84px; --slot-w: 104px; }
+  .card { font-size: 11px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<header class="top">
+  <div>
+    <div class="eyebrow">Ngành Ngôn ngữ Hàn Quốc</div>
+    <h1>Sơ đồ cây CTĐT · <span class="spec" id="specName"></span></h1>
+  </div>
+  <div class="total"><b id="grandTotal">0</b><small>tín chỉ toàn khoá</small></div>
+</header>
+
+<nav class="tabs" id="tabs" role="tablist" aria-label="Các trang"></nav>
+
+<div class="toolbar">
+  <div class="group">
+    <button class="btn" id="btnCopy" type="button">Sao chép trang</button>
+    <button class="btn" id="btnNew" type="button">Trang mới</button>
+    <button class="btn" id="btnRename" type="button">Đổi tên</button>
+    <button class="btn danger" id="btnDelPage" type="button">Xoá trang</button>
+  </div>
+  <div class="group">
+    <button class="btn primary" id="btnAddCard" type="button">+ Môn mới</button>
+    <button class="btn" id="btnLink" type="button" aria-pressed="false">Liên kết môn tự chọn</button>
+    <button class="btn" id="btnUndo" type="button">Hoàn tác</button>
+  </div>
+  <div class="group" aria-label="Tô màu nhanh">
+    <span class="group-label">Tô màu nhanh:</span>
+    <span id="paintSw" class="group"></span>
+    <span class="paint-note" id="paintNote" hidden>Bấm vào môn để tô · bấm lại ô màu để tắt</span>
+  </div>
+  <div class="group">
+    <button class="btn" id="btnBackup" type="button">Sao lưu / Khôi phục</button>
+  </div>
+</div>
+<p class="hint">Kéo môn để di chuyển, thả vào ô đã có môn thì hai môn đổi chỗ. Bấm vào môn để sửa. Các môn cùng nhóm tự chọn được bao bằng khung cùng màu; nhóm chỉ tính tín chỉ một lần, ở học kỳ chứa môn đầu tiên của nhóm. Chữ “hoặc” giữa hai ô nghĩa là chọn một trong hai; dấu “+” nghĩa là hai môn học chung, tính là một lựa chọn. Muốn tạo nhóm: bấm “Liên kết môn tự chọn”, chọn các môn rồi bấm “Tạo nhóm”.</p>
+
+<div class="gridwrap" id="gridwrap"><div class="grid" id="grid"></div></div>
+<div class="under"><button class="btn" id="btnAddRow" type="button">+ Thêm học kỳ</button></div>
+
+<section class="pool">
+  <h2>Khay môn học</h2>
+  <p>Kéo môn ra đây để cất tạm, hoặc kéo từ đây vào ô trống trên sơ đồ.</p>
+  <div class="pool-cards" id="pool" data-drop="pool"></div>
+</section>
+
+<section class="summary">
+  <h2>Tổng hợp theo màu</h2>
+  <p>Đếm các môn đang nằm trên sơ đồ (không tính khay). Nhóm tự chọn chỉ cộng tín chỉ một lần, giống cách tính tổng hoá.</p>
+  <div class="sumwrap"><table class="sumtable" id="sumTable"></table></div>
+</section>
+
+<div class="linkbar" id="linkbar" hidden>
+  <span>Đã chọn <b id="linkCount">0</b> môn</span>
+  <button class="btn primary" id="lnkMake" type="button">Tạo nhóm tự chọn</button>
+  <button class="btn" id="lnkBreak" type="button">Tách khỏi nhóm</button>
+  <button class="btn" id="lnkBundle" type="button" title="Các môn phải học chung với nhau, tính là 1 lựa chọn trong nhóm">Gộp thành 1 phương án</button>
+  <button class="btn" id="lnkSplit" type="button">Tách phương án</button>
+  <button class="btn" id="lnkDone" type="button">Xong</button>
+</div>
+<div class="trash" id="trash" data-drop="trash" hidden>Thả vào đây để xoá môn</div>
+<div id="modalRoot"></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function () {
+  const KEY = "ctdt-nnhq-2025-v4";
+  const SLOTS = 12;
+  const COLORS = [
+    { v: "#E9D49A", name: "Vàng" },
+    { v: "#E2DDD3", name: "Xám" },
+    { v: "#C8D2DD", name: "Lam nhạt" },
+    { v: "#B9D3BC", name: "Xanh ngọc" },
+    { v: "#E5B9A0", name: "Cam đào" },
+    { v: "#9DA9BE", name: "Xanh xám" },
+    { v: "#CDB8D4", name: "Tím nhạt" },
+    { v: "#F4F1EA", name: "Trắng ngà" }
+  ];
+  const GCOL = ["#4E6E9A", "#7A5C93", "#3F7F6E", "#A0663A", "#9A4A62", "#5E7A36", "#3D6F86", "#86613F"];
+  const [cY, cG, cB, cN, cP, cBG, cK] = COLORS.map(c => c.v);
+
+  const $ = id => document.getElementById(id);
+  const uid = () => Math.random().toString(36).slice(2, 10);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+  const C = (name, lt, color, o = {}) => ({ id: uid(), name, lt, th: 0, color, tag: o.tag || "", noCredit: !!o.nc, ...(o.g ? { group: o.g } : {}), ...(o.opt ? { opt: o.opt } : {}) });
+  const R = (label, map = {}) => { const slots = Array(SLOTS).fill(null); for (const k in map) slots[k] = map[k]; return { id: uid(), label, slots }; };
+  const credits = c => c && !c.noCredit ? (Number(c.lt) || 0) + (Number(c.th) || 0) : 0;
+
+  /* Columns follow the original tree:
+     0–3 Nghe/Nói/Đọc/Viết · 4–5 cơ sở / tự chọn · 6 Ngữ âm → Từ vựng → Cú pháp · 7 GDQP / Ngoại ngữ 2 / GDTC · 8 Lý luận chính trị · 9–11 chuyên ngành */
+  const SPECS = {
+    kttm: ng => { const g = ng(); return {
+      h7: { 9: C("Tiếng Hàn công sở", 3, cN), 10: C("Nghiệp vụ PR và TCSK", 3, cN, { g }), 11: C("Digital Marketing", 3, cN, { g }) }, h8: {},
+      h9: { 9: C("Tiếng Hàn thương mại", 3, cN), 10: C("Biên phiên dịch chuyên ngành", 3, cN) } }; },
+    dulich: () => ({
+      h7: { 9: C("Tiếng Hàn du lịch", 3, cN), 10: C("Tổng quan du lịch và Luật du lịch", 3, cN) }, h8: {},
+      h9: { 9: C("Nghiệp vụ hướng dẫn – Tâm lý du lịch", 3, cN), 10: C("Thuyết minh tuyến điểm Việt – Hàn", 3, cN) } }),
+    giangday: () => ({
+      h7: { 9: C("Nhập môn GD tiếng Hàn", 3, cN), 10: C("PP giảng dạy tiếng Hàn", 3, cN) }, h8: {},
+      h9: { 9: C("E-learning trong giảng dạy tiếng Hàn", 3, cN), 10: C("Thực hành giảng dạy tiếng Hàn", 3, cN) } })
+  };
+  function buildPage(name, specKey) {
+    const groups = {}; let gi = 0;
+    const ng = () => { const id = uid(); groups[id] = { color: GCOL[gi++ % GCOL.length] }; return id; };
+    const sk = (n, adv) => {
+      const s = adv ? " nâng cao" : ` ${n}`;
+      return { 0: C(`Nghe tiếng Hàn${s}`, 3, cY), 1: C(`Nói tiếng Hàn${s}`, 3, cY), 2: C(`Đọc tiếng Hàn${s}`, 3, cY), 3: C(`Viết tiếng Hàn${s}`, 3, cY) };
+    };
+    const gA = ng(), gB = ng(), gC = ng(), gD = ng();
+    const sp = SPECS[specKey](ng);
+    const gF = ng(), oF = uid();
+    const rows = [
+      R("HK1", { ...sk(1), 8: C("Triết học Mác – Lênin", 3, cG) }),
+      R("HK2", { ...sk(2), 8: C("Kinh tế chính trị Mác – Lênin", 2, cG) }),
+      R("HK2 – Hè", { 7: C("Giáo dục Quốc phòng an ninh", 0, cG, { nc: 1 }) }),
+      R("HK3", { ...sk(3), 7: C("Ngoại ngữ 2 (1)", 3, cG), 8: C("Chủ nghĩa xã hội khoa học", 2, cG) }),
+      R("HK4", { ...sk(4), 4: C("Cơ sở văn hoá Việt Nam", 3, cB, { g: gA }), 5: C("Cơ sở ngôn ngữ học và tiếng Việt", 3, cB, { g: gA }),
+        7: C("Ngoại ngữ 2 (2)", 3, cG), 8: C("Tư tưởng Hồ Chí Minh", 2, cG) }),
+      R("HK5 – Hè", { 0: C("Trí tuệ nhân tạo ứng dụng", 2, cG), 1: C("Đại cương pháp luật VN", 2, cG), 2: C("Phương pháp NCKH", 3, cB),
+        3: C("Phương pháp luận sáng tạo", 3, cB, { g: gB }), 4: C("Tâm lý học đại cương", 3, cB, { g: gB }), 5: C("Logic học ứng dụng và tiếng Việt", 3, cB, { g: gB }),
+        7: C("Ngoại ngữ 2 (3)", 3, cG), 8: C("Lịch sử Đảng Cộng sản Việt Nam", 2, cG) }),
+      R("HK6", { ...sk(0, true), 4: C("Ứng dụng CN trong dịch thuật tiếng Hàn", 3, cB), 6: C("Ngữ âm – Âm vị học tiếng Hàn", 3, cY), 7: C("Giáo dục thể chất (1)", 0, cG, { nc: 1 }) }),
+      R("HK7", { 0: C("Văn hoá – Xã hội Hàn Quốc", 3, cB, { g: gC }), 1: C("Địa lý – Kinh tế Hàn Quốc", 3, cB, { g: gC }), 2: C("Lịch sử Korea", 3, cB, { g: gC }),
+        3: C("Ứng dụng CN vào soạn thảo văn bản tiếng Hàn", 3, cB, { g: gD }), 4: C("Kỹ năng dịch tiếng Hàn nâng cao", 3, cB, { g: gD }), 5: C("Văn học Korea", 3, cB, { g: gD }),
+        6: C("Từ vựng – Ngữ nghĩa học tiếng Hàn", 3, cY), 7: C("Giáo dục thể chất (2)", 0, cG, { nc: 1 }), ...sp.h7 }),
+      R("HK8 – Hè", { 0: C("Thực tập", 3, cP), 1: C("Môn tự do", 3, cBG), ...sp.h8 }),
+      R("HK9", { 0: C("Khoá luận tốt nghiệp", 6, cK, { g: gF }),
+        1: C("Văn hoá doanh nghiệp Hàn Quốc", 3, cK, { g: gF, opt: oF }),
+        2: C("Thuyết trình tiếng Hàn ứng dụng đa phương tiện", 3, cK, { g: gF, opt: oF }),
+        6: C("Cú pháp học tiếng Hàn", 3, cY), ...sp.h9 })
+    ];
+    return { id: uid(), name, pool: [], groups, rows };
+  }
+  function defaults() {
+    return { active: 0, pages: [buildPage("Kinh tế – Thương mại (Khoá 2025 và 2026)", "kttm"), buildPage("Du lịch (Khoá 2025 và 2026)", "dulich"), buildPage("Giảng dạy tiếng Hàn (Khoá 2025 và 2026)", "giangday")] };
+  }
+  const blankRows = () => ["HK1", "HK2", "HK2 – Hè", "HK3", "HK4", "HK5 – Hè", "HK6", "HK7", "HK8 – Hè", "HK9"].map(l => R(l));
+
+  const allCards = p => [...p.rows.flatMap(r => r.slots).filter(Boolean), ...p.pool];
+  function tidy(p) {
+    p.groups = p.groups || {};
+    const cnt = {};
+    allCards(p).forEach(c => { if (c.group) { if (!p.groups[c.group]) delete c.group; else cnt[c.group] = (cnt[c.group] || 0) + 1; } if (!c.group) delete c.opt; });
+    Object.keys(p.groups).forEach(g => {
+      if ((cnt[g] || 0) < 2) { delete p.groups[g]; allCards(p).forEach(c => { if (c.group === g) { delete c.group; delete c.opt; } }); }
+    });
+  }
+  function valid(d) { return d && Array.isArray(d.pages) && d.pages.length && d.pages.every(p => Array.isArray(p.rows)); }
+  function normalize(d) {
+    d.pages.forEach(p => {
+      p.id = p.id || uid(); p.pool = Array.isArray(p.pool) ? p.pool : []; p.groups = p.groups || {};
+      if (["Kinh tế – Thương mại", "Du lịch", "Giảng dạy tiếng Hàn"].includes(p.name)) p.name += " (Khoá 2025 và 2026)";
+      [...p.rows.flatMap(r => r.slots || []), ...p.pool].forEach(c => { if (c && String(c.color).toUpperCase() === "#D8CF95") c.color = "#CDB8D4"; });
+      p.rows.forEach(r => { r.id = r.id || uid(); r.slots = (r.slots || []).slice(0, SLOTS); while (r.slots.length < SLOTS) r.slots.push(null); });
+      tidy(p);
+    });
+    d.active = Math.min(Math.max(0, d.active | 0), d.pages.length - 1);
+    return d;
+  }
+  function load() {
+    try { const raw = localStorage.getItem(KEY); if (raw) { const d = JSON.parse(raw); if (valid(d)) return normalize(d); } } catch (e) {}
+    return defaults();
+  }
+  let S = load();
+  let hist = [];
+  let paint = null;
+  let linkSel = null; // Set of card ids while linking
+  const page = () => S.pages[S.active];
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+  function snap() { hist.push(JSON.stringify(S)); if (hist.length > 80) hist.shift(); }
+  function commit() { S.pages.forEach(tidy); save(); render(); }
+  function undo() { if (!hist.length) { toast("Không còn thao tác để hoàn tác"); return; } S = JSON.parse(hist.pop()); commit(); toast("Đã hoàn tác"); }
+
+  let toastT;
+  function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2400); }
+
+  /* ---------- groups ---------- */
+  const gKeys = p => Object.keys(p.groups || {});
+  const gLetter = (p, g) => String.fromCharCode(65 + gKeys(p).indexOf(g));
+  const gMembers = (p, g) => allCards(p).filter(c => c.group === g);
+  function gOptions(p, g) { const m = {}; gMembers(p, g).forEach(c => { const k = c.opt || c.id; m[k] = (m[k] || 0) + credits(c); }); return m; }
+  function gCredits(p, g) { return Math.max(0, ...Object.values(gOptions(p, g))); }
+  function rowSums(p) {
+    const sums = p.rows.map(() => 0), seen = new Set();
+    p.rows.forEach((row, i) => row.slots.forEach(c => {
+      if (!c) return;
+      if (c.group && p.groups[c.group]) { if (seen.has(c.group)) return; seen.add(c.group); sums[i] += gCredits(p, c.group); }
+      else sums[i] += credits(c);
+    }));
+    return sums;
+  }
+  function nextGColor(p) {
+    const used = gKeys(p).map(k => p.groups[k].color);
+    return GCOL.find(c => !used.includes(c)) || GCOL[gKeys(p).length % GCOL.length];
+  }
+
+  /* ---------- render ---------- */
+  function render() {
+    const p = page();
+    $("specName").textContent = p.name;
+    const tabs = $("tabs"); tabs.innerHTML = "";
+    S.pages.forEach((pg, i) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "tab"; b.setAttribute("role", "tab");
+      b.setAttribute("aria-selected", i === S.active ? "true" : "false");
+      b.textContent = pg.name;
+      b.onclick = () => { if (S.active !== i) { S.active = i; if (linkSel) linkSel.clear(); commit(); } };
+      b.ondblclick = () => { S.active = i; commit(); renamePage(); };
+      tabs.append(b);
+    });
+    $("btnDelPage").disabled = S.pages.length < 2;
+    $("btnUndo").disabled = !hist.length;
+
+    const grid = $("grid"); grid.innerHTML = "";
+    const sums = rowSums(p);
+    p.rows.forEach((row, r) => {
+      const sum = sums[r];
+      const lab = document.createElement("button");
+      lab.type = "button"; lab.className = "hk"; lab.title = "Đổi tên hoặc xoá học kỳ";
+      lab.innerHTML = `<span class="hk-name">${esc(row.label)}</span><span class="hk-tc${sum ? "" : " zero"}">${sum} TC</span>`;
+      lab.onclick = () => editRow(r);
+      grid.append(lab);
+      row.slots.forEach((c, s) => {
+        const slot = document.createElement("div");
+        slot.className = "slot"; slot.dataset.drop = "slot"; slot.dataset.r = r; slot.dataset.s = s;
+        if (c) slot.append(cardEl(c, { type: "slot", r, s }));
+        else {
+          const add = document.createElement("button");
+          add.type = "button"; add.className = "slot-add"; add.textContent = "+"; add.title = "Thêm môn vào ô này";
+          add.setAttribute("aria-label", `Thêm môn vào ${row.label}, ô ${s + 1}`);
+          add.onclick = () => newCard({ type: "slot", r, s });
+          slot.append(add);
+        }
+        grid.append(slot);
+      });
+    });
+    $("grandTotal").textContent = sums.reduce((a, b) => a + b, 0);
+
+    const pool = $("pool"); pool.innerHTML = "";
+    if (!p.pool.length) pool.innerHTML = `<span class="pool-empty">Khay đang trống</span>`;
+    p.pool.forEach((c, i) => pool.append(cardEl(c, { type: "pool", i })));
+
+    const ps = $("paintSw"); ps.innerHTML = "";
+    COLORS.forEach(col => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "sw"; b.style.setProperty("--c", col.v); b.title = col.name;
+      b.setAttribute("aria-label", "Tô màu " + col.name);
+      b.setAttribute("aria-pressed", paint === col.v ? "true" : "false");
+      b.onclick = () => { paint = paint === col.v ? null : col.v; if (paint) linkSel = null; render(); };
+      ps.append(b);
+    });
+    $("paintNote").hidden = !paint;
+    document.body.classList.toggle("painting", !!paint);
+
+    $("btnLink").setAttribute("aria-pressed", linkSel ? "true" : "false");
+    document.body.classList.toggle("linking", !!linkSel);
+    $("linkbar").hidden = !linkSel;
+    if (linkSel) {
+      $("linkCount").textContent = linkSel.size;
+      $("lnkMake").disabled = linkSel.size < 2;
+      $("lnkBreak").disabled = ![...linkSel].some(id => allCards(p).some(c => c.id === id && c.group));
+      $("lnkBundle").disabled = linkSel.size < 2;
+      $("lnkSplit").disabled = ![...linkSel].some(id => allCards(p).some(c => c.id === id && c.opt));
+    }
+    drawFrames();
+    renderSummary(p);
+  }
+
+  function renderSummary(p) {
+    const stats = new Map();
+    const key = c => String(c.color || cG).toUpperCase();
+    const get = k => { if (!stats.has(k)) stats.set(k, { n: 0, tc: 0 }); return stats.get(k); };
+    const seen = new Set();
+    p.rows.forEach(row => row.slots.forEach(c => {
+      if (!c) return;
+      const st = get(key(c)); st.n++;
+      if (c.group && p.groups[c.group]) { if (!seen.has(c.group)) { seen.add(c.group); st.tc += gCredits(p, c.group); } }
+      else st.tc += credits(c);
+    }));
+    const order = COLORS.map(c => c.v.toUpperCase());
+    const keys = [...stats.keys()].sort((a, b) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99));
+    let N = 0, T = 0;
+    const rows = keys.map(k => {
+      const st = stats.get(k); N += st.n; T += st.tc;
+      const hit = COLORS.find(c => c.v.toUpperCase() === k);
+      return `<tr><td><span class="chip" style="--c:${k}"></span>${esc(hit ? hit.name : "Màu tuỳ chọn " + k)}</td><td class="num">${st.n}</td><td class="num">${st.tc}</td></tr>`;
+    }).join("");
+    $("sumTable").innerHTML = `<thead><tr><th>Màu</th><th class="num">Số môn</th><th class="num">Tín chỉ</th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="3" style="color:var(--muted)">Chưa có môn nào trên sơ đồ</td></tr>`}</tbody>
+      <tfoot><tr><td>Tổng cộng</td><td class="num">${N}</td><td class="num">${T}</td></tr></tfoot>`;
+  }
+
+  function drawFrames() {
+    const grid = $("grid"), p = page();
+    grid.querySelectorAll(".gframe, .glinks, .gchip, .oframe").forEach(e => e.remove());
+    const slotAt = (r, s) => grid.querySelector(`.slot[data-r="${r}"][data-s="${s}"]`);
+    const keys = gKeys(p); if (!keys.length) return;
+    const NS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("class", "glinks");
+    svg.setAttribute("width", grid.scrollWidth); svg.setAttribute("height", grid.scrollHeight);
+    keys.forEach(g => {
+      const color = p.groups[g].color;
+      const pos = [];
+      p.rows.forEach((row, r) => row.slots.forEach((c, s) => { if (c && c.group === g) pos.push({ r, s, c }); }));
+      if (!pos.length) return;
+      const runs = [];
+      pos.forEach(q => { const last = runs[runs.length - 1]; if (last && last.r === q.r && last.s1 === q.s - 1) last.s1 = q.s; else runs.push({ r: q.r, s0: q.s, s1: q.s }); });
+      const n = Object.keys(gOptions(p, g)).length;
+      const boxes = runs.map((run, i) => {
+        const a = grid.querySelector(`.slot[data-r="${run.r}"][data-s="${run.s0}"]`);
+        const b = grid.querySelector(`.slot[data-r="${run.r}"][data-s="${run.s1}"]`);
+        const box = { x: a.offsetLeft - 5, y: a.offsetTop - 6, w: b.offsetLeft + b.offsetWidth - a.offsetLeft + 10, h: a.offsetHeight + 12 };
+        const f = document.createElement("div");
+        f.className = "gframe"; f.dataset.g = g; f.style.setProperty("--g", color);
+        Object.assign(f.style, { left: box.x + "px", top: box.y + "px", width: box.w + "px", height: box.h + "px" });
+        if (i === 0) f.innerHTML = `<span class="glabel">${gLetter(p, g)} · Chọn 1 trong ${n} · ${gCredits(p, g)} TC</span>`;
+        grid.prepend(f);
+        return box;
+      });
+      for (let i = 1; i < pos.length; i++) {
+        const a = pos[i - 1], b = pos[i];
+        if (a.r !== b.r || b.s !== a.s + 1) continue;
+        const ea = slotAt(a.r, a.s), eb = slotAt(b.r, b.s);
+        const same = (a.c.opt || a.c.id) === (b.c.opt || b.c.id);
+        const chip = document.createElement("div");
+        chip.className = "gchip" + (same ? " plus" : ""); chip.style.setProperty("--g", color);
+        chip.textContent = same ? "+" : "hoặc";
+        chip.title = same ? "Học cả hai môn (cùng một phương án)" : "Chọn một trong các phương án";
+        chip.style.left = (ea.offsetLeft + ea.offsetWidth + eb.offsetLeft) / 2 + "px";
+        chip.style.top = ea.offsetTop + ea.offsetHeight - 10 + "px";
+        grid.append(chip);
+      }
+      const byOpt = {};
+      pos.forEach(q => { if (q.c.opt) (byOpt[q.c.opt] = byOpt[q.c.opt] || []).push(q); });
+      Object.values(byOpt).forEach(list => {
+        if (list.length < 2) return;
+        const oruns = [];
+        list.forEach(q => { const l = oruns[oruns.length - 1]; if (l && l.r === q.r && l.s1 === q.s - 1) l.s1 = q.s; else oruns.push({ r: q.r, s0: q.s, s1: q.s }); });
+        oruns.forEach(run => {
+          const a = slotAt(run.r, run.s0), b = slotAt(run.r, run.s1);
+          const f = document.createElement("div"); f.className = "oframe"; f.style.setProperty("--g", color);
+          Object.assign(f.style, { left: a.offsetLeft - 3 + "px", top: a.offsetTop - 3 + "px", width: b.offsetLeft + b.offsetWidth - a.offsetLeft + 6 + "px", height: a.offsetHeight + 6 + "px" });
+          grid.prepend(f);
+        });
+      });
+      for (let i = 1; i < boxes.length; i++) {
+        const a = boxes[i - 1], b = boxes[i];
+        let x1, y1, x2, y2;
+        if (b.y > a.y + a.h - 1) { x1 = a.x + a.w / 2; y1 = a.y + a.h; x2 = b.x + b.w / 2; y2 = b.y; }
+        else { x1 = a.x + a.w; y1 = a.y + a.h / 2; x2 = b.x; y2 = b.y + b.h / 2; }
+        const path = document.createElementNS(NS, "path");
+        const my = (y1 + y2) / 2;
+        path.setAttribute("d", b.y > a.y + a.h - 1 ? `M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}` : `M${x1},${y1} L${x2},${y2}`);
+        path.setAttribute("fill", "none"); path.setAttribute("stroke", color); path.setAttribute("stroke-width", "2"); path.setAttribute("stroke-dasharray", "5 4");
+        svg.append(path);
+      }
+    });
+    grid.prepend(svg);
+  }
+  addEventListener("resize", () => drawFrames());
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => drawFrames());
+
+  function cardInner(c, p) {
+    const names = String(c.name || "").split("\n").map(s => s.trim()).filter(Boolean);
+    const nm = names.length ? names.map(n => `<span class="nm">${esc(n)}</span>`).join(`<span class="sep" aria-hidden="true"></span>`) : `<span class="nm" style="opacity:.6">(chưa đặt tên)</span>`;
+    const cr = c.noCredit ? `<span class="cr nc">không tính TC</span>` : `<span class="cr">(${Number(c.lt) || 0}+${Number(c.th) || 0})</span>`;
+    const dot = c.group && p && p.groups[c.group] ? `<span class="gdot" title="Nhóm tự chọn ${gLetter(p, c.group)}">${gLetter(p, c.group)}</span>` : "";
+    return dot + (c.tag ? `<span class="tag">${esc(c.tag)}</span>` : "") + nm + cr;
+  }
+  function setGlow(g, on) { document.querySelectorAll(`[data-g="${g}"]`).forEach(e => e.classList.toggle("glow", on)); }
+  function cardEl(c, loc) {
+    const p = page();
+    const d = document.createElement("div");
+    d.className = "card"; d.tabIndex = 0;
+    d.style.setProperty("--c", c.color || cG);
+    if (c.group && p.groups[c.group]) { d.dataset.g = c.group; d.style.setProperty("--g", p.groups[c.group].color); }
+    if (linkSel && linkSel.has(c.id)) d.classList.add("selected");
+    d.innerHTML = cardInner(c, p);
+    d.setAttribute("aria-label", `${String(c.name).replace(/\n/g, " / ")}, ${credits(c)} tín chỉ${c.group ? ", nhóm tự chọn " + gLetter(p, c.group) : ""}. Enter để sửa.`);
+    d.addEventListener("pointerdown", e => startDrag(e, c, loc, d));
+    d.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); tapCard(c, loc); } });
+    if (c.group) { d.addEventListener("pointerenter", () => setGlow(c.group, true)); d.addEventListener("pointerleave", () => setGlow(c.group, false)); }
+    return d;
+  }
+  function tapCard(c, loc) {
+    if (linkSel) { linkSel.has(c.id) ? linkSel.delete(c.id) : linkSel.add(c.id); render(); return; }
+    if (paint) { if (c.color !== paint) { snap(); c.color = paint; commit(); } return; }
+    openCard(loc);
+  }
+
+  /* ---------- locations ---------- */
+  function getAt(loc) { const p = page(); return loc.type === "slot" ? p.rows[loc.r].slots[loc.s] : p.pool[loc.i]; }
+  function removeAt(loc) { const p = page(); if (loc.type === "slot") p.rows[loc.r].slots[loc.s] = null; else p.pool.splice(loc.i, 1); }
+  function putAt(loc, c) { const p = page(); if (loc.type === "slot") p.rows[loc.r].slots[loc.s] = c; else p.pool.push(c); }
+
+  function moveCard(from, to) {
+    const p = page(); const c = getAt(from); if (!c) return;
+    if (to.type === "trash") { snap(); removeAt(from); commit(); toast("Đã xoá môn. Bấm Hoàn tác nếu nhầm."); return; }
+    if (to.type === "pool") { if (from.type === "pool") return; snap(); removeAt(from); p.pool.push(c); commit(); return; }
+    if (to.type === "slot") {
+      if (from.type === "slot" && from.r === to.r && from.s === to.s) return;
+      snap();
+      const occ = p.rows[to.r].slots[to.s];
+      if (from.type === "slot") { p.rows[from.r].slots[from.s] = occ || null; }
+      else { p.pool.splice(from.i, 1); if (occ) p.pool.splice(from.i, 0, occ); }
+      p.rows[to.r].slots[to.s] = c;
+      commit();
+    }
+  }
+
+  /* ---------- drag (pointer events: mouse + touch) ---------- */
+  function autoscroll(ev) {
+    const w = $("gridwrap"), r = w.getBoundingClientRect();
+    if (ev.clientY > r.top && ev.clientY < r.bottom) {
+      if (ev.clientX < r.left + 50) w.scrollLeft -= 16;
+      else if (ev.clientX > r.right - 50) w.scrollLeft += 16;
+    }
+    if (ev.clientY < 50) window.scrollBy(0, -16);
+    else if (ev.clientY > innerHeight - 50) window.scrollBy(0, 16);
+  }
+  function startDrag(e, c, loc, node) {
+    if (e.button > 0) return;
+    const st = { x: e.clientX, y: e.clientY, active: false, ghost: null, over: null };
+    const mv = ev => {
+      if (!st.active) {
+        if (Math.hypot(ev.clientX - st.x, ev.clientY - st.y) < 6) return;
+        if (paint || linkSel) return;
+        st.active = true;
+        const r = node.getBoundingClientRect();
+        st.dx = st.x - r.left; st.dy = st.y - r.top;
+        const g = node.cloneNode(true);
+        g.classList.add("ghost"); g.classList.remove("glow"); g.style.width = r.width + "px"; g.style.height = r.height + "px";
+        document.body.append(g); st.ghost = g;
+        node.classList.add("dragging"); $("trash").hidden = false; document.body.classList.add("is-dragging");
+      }
+      ev.preventDefault();
+      st.ghost.style.transform = `translate(${ev.clientX - st.dx}px, ${ev.clientY - st.dy}px) rotate(-2deg)`;
+      const t = document.elementFromPoint(ev.clientX, ev.clientY);
+      const d = t && t.closest("[data-drop]");
+      if (st.over !== d) { if (st.over) st.over.classList.remove("over"); st.over = d; if (d) d.classList.add("over"); }
+      autoscroll(ev);
+    };
+    const up = ev => {
+      window.removeEventListener("pointermove", mv);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      if (st.active) {
+        st.ghost.remove(); node.classList.remove("dragging"); $("trash").hidden = true; document.body.classList.remove("is-dragging");
+        const d = st.over; if (d) d.classList.remove("over");
+        if (d && ev.type === "pointerup") {
+          const kind = d.dataset.drop;
+          moveCard(loc, kind === "slot" ? { type: "slot", r: +d.dataset.r, s: +d.dataset.s } : { type: kind });
+        } else render();
+      } else if (ev.type === "pointerup") tapCard(c, loc);
+    };
+    window.addEventListener("pointermove", mv, { passive: false });
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  }
+
+  /* ---------- link mode ---------- */
+  $("btnLink").onclick = () => { linkSel = linkSel ? null : new Set(); if (linkSel) { paint = null; toast("Bấm chọn các môn cùng nhóm tự chọn"); } render(); };
+  $("lnkDone").onclick = () => { linkSel = null; render(); };
+  $("lnkMake").onclick = () => {
+    const p = page(); if (!linkSel || linkSel.size < 2) return;
+    snap(); const g = uid(); p.groups[g] = { color: nextGColor(p) };
+    allCards(p).forEach(c => { if (linkSel.has(c.id)) c.group = g; });
+    const n = linkSel.size; linkSel = new Set(); commit(); toast(`Đã tạo nhóm “Chọn 1 trong ${n}”`);
+  };
+  $("lnkBreak").onclick = () => {
+    const p = page(); if (!linkSel) return;
+    snap(); allCards(p).forEach(c => { if (linkSel.has(c.id)) delete c.group; });
+    linkSel = new Set(); commit(); toast("Đã tách các môn khỏi nhóm");
+  };
+
+  $("lnkBundle").onclick = () => {
+    const p = page(); if (!linkSel || linkSel.size < 2) return;
+    const sel = allCards(p).filter(c => linkSel.has(c.id));
+    const gs = new Set(sel.map(c => c.group || ""));
+    if (gs.size !== 1 || !sel[0].group) { toast("Hãy chọn các môn trong cùng một nhóm tự chọn"); return; }
+    snap(); const o = uid(); sel.forEach(c => c.opt = o);
+    linkSel = new Set(); commit(); toast("Đã gộp: các môn này học chung, tính là 1 lựa chọn");
+  };
+  $("lnkSplit").onclick = () => {
+    const p = page(); if (!linkSel) return;
+    snap(); allCards(p).forEach(c => { if (linkSel.has(c.id)) delete c.opt; });
+    linkSel = new Set(); commit(); toast("Đã tách phương án");
+  };
+
+  /* ---------- modals ---------- */
+  let onKey = null;
+  function openModal(html, bind) {
+    const root = $("modalRoot");
+    root.innerHTML = `<div class="overlay" id="ov"><div class="modal" role="dialog" aria-modal="true">${html}</div></div>`;
+    $("ov").addEventListener("pointerdown", e => { if (e.target.id === "ov") closeModal(); });
+    onKey = e => { if (e.key === "Escape") closeModal(); };
+    document.addEventListener("keydown", onKey);
+    bind && bind(root.querySelector(".modal"));
+    const f = root.querySelector("textarea, input[type=text]"); if (f) setTimeout(() => f.focus(), 0);
+  }
+  function closeModal() { $("modalRoot").innerHTML = ""; if (onKey) document.removeEventListener("keydown", onKey); onKey = null; }
+
+  function editor(card, title, onSave, extra) {
+    const p = page();
+    const swatches = COLORS.map(col => `<button type="button" class="sw" data-v="${col.v}" title="${esc(col.name)}" aria-label="${esc(col.name)}" style="--c:${col.v}"></button>`).join("");
+    const gopts = gKeys(p).map(g => {
+      return `<option value="${g}">Nhóm ${gLetter(p, g)}</option>`;
+    }).join("");
+    openModal(`
+      <h3>${title}</h3>
+      <div class="preview"><div class="card" id="ed-prev"></div></div>
+      <label for="ed-name">Tên môn <small>Xuống dòng nếu muốn ghi 2 môn học chung một ô</small></label>
+      <textarea id="ed-name" rows="2"></textarea>
+      <div class="row2">
+        <label>Lý thuyết (TC)<input type="number" id="ed-lt" min="0" max="30" step="1"></label>
+        <label>Thực hành (TC)<input type="number" id="ed-th" min="0" max="30" step="1"></label>
+      </div>
+      <label class="chk"><input type="checkbox" id="ed-nc"> Không tính vào tổng tín chỉ (VD: GDTC, GDQP-AN)</label>
+      <label for="ed-group">Nhóm tự chọn</label>
+      <select id="ed-group"><option value="">Không thuộc nhóm nào</option>${gopts}</select>
+      <div class="note">Muốn tạo nhóm mới: đóng hộp này, bấm “Liên kết môn tự chọn” trên thanh công cụ rồi chọn các môn.</div>
+      <label for="ed-tag">Nhãn nhỏ <small>không bắt buộc, VD: Học kỳ hè</small></label>
+      <input type="text" id="ed-tag">
+      <div><div style="font-size:13px;font-weight:500;margin-bottom:6px">Màu ô</div>
+        <div class="sw-row" id="ed-sw">${swatches}<input type="color" id="ed-color" title="Màu tuỳ chọn" aria-label="Màu tuỳ chọn"></div>
+        <div class="sw-names" id="ed-swname"></div></div>
+      <div class="actions">
+        <div>${extra ? `<button type="button" class="btn danger" id="ed-del">Xoá môn</button><button type="button" class="btn" id="ed-dup">Nhân bản</button>` : ""}</div>
+        <div><button type="button" class="btn" id="ed-cancel">Huỷ</button><button type="button" class="btn primary" id="ed-save">Lưu</button></div>
+      </div>`, m => {
+      const d = { ...card };
+      const name = $("ed-name"), tag = $("ed-tag"), lt = $("ed-lt"), th = $("ed-th"), nc = $("ed-nc"), colr = $("ed-color"), grp = $("ed-group");
+      name.value = d.name; tag.value = d.tag || ""; lt.value = d.lt ?? 0; th.value = d.th ?? 0; nc.checked = !!d.noCredit; colr.value = d.color || cG;
+      grp.value = d.group && p.groups[d.group] ? d.group : "";
+      const sync = () => {
+        d.name = name.value; d.tag = tag.value.trim(); d.lt = Math.max(0, parseInt(lt.value, 10) || 0); d.th = Math.max(0, parseInt(th.value, 10) || 0); d.noCredit = nc.checked;
+        if (grp.value) d.group = grp.value; else delete d.group;
+        if (d.group !== card.group) delete d.opt; else if (card.opt) d.opt = card.opt;
+        const pv = $("ed-prev"); pv.style.setProperty("--c", d.color);
+        if (d.group) pv.style.setProperty("--g", p.groups[d.group].color);
+        pv.innerHTML = cardInner(d, p);
+        m.querySelectorAll("#ed-sw .sw").forEach(b => b.setAttribute("aria-pressed", b.dataset.v.toLowerCase() === String(d.color).toLowerCase() ? "true" : "false"));
+        const hit = COLORS.find(c => c.v.toLowerCase() === String(d.color).toLowerCase());
+        $("ed-swname").textContent = hit ? hit.name : "Màu tuỳ chọn";
+      };
+      [name, tag, lt, th, nc, grp].forEach(x => x.addEventListener("input", sync));
+      grp.addEventListener("change", sync);
+      m.querySelectorAll("#ed-sw .sw").forEach(b => b.onclick = () => { d.color = b.dataset.v; colr.value = d.color; sync(); });
+      colr.addEventListener("input", () => { d.color = colr.value.toUpperCase(); sync(); });
+      sync();
+      $("ed-cancel").onclick = closeModal;
+      $("ed-save").onclick = () => { sync(); onSave(d); closeModal(); };
+      name.addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) $("ed-save").click(); });
+      if (extra) { $("ed-del").onclick = () => { extra.del(); closeModal(); }; $("ed-dup").onclick = () => { sync(); extra.dup(d); closeModal(); }; }
+    });
+  }
+
+  function openCard(loc) {
+    const c = getAt(loc); if (!c) return;
+    editor(c, "Sửa môn học", d => { snap(); Object.keys(c).forEach(k => delete c[k]); Object.assign(c, d); commit(); }, {
+      del: () => { snap(); removeAt(loc); commit(); toast("Đã xoá môn. Bấm Hoàn tác nếu nhầm."); },
+      dup: d => {
+        snap(); const copy = { ...d, id: uid() }; const p = page();
+        if (loc.type === "slot") { const row = p.rows[loc.r]; const free = row.slots.indexOf(null); if (free >= 0) { row.slots[free] = copy; commit(); toast("Đã nhân bản vào ô trống cùng học kỳ"); return; } }
+        p.pool.push(copy); commit(); toast("Đã nhân bản vào khay môn học");
+      }
+    });
+  }
+  function newCard(loc) {
+    const c = { id: uid(), name: "", lt: 3, th: 0, color: paint || COLORS[0].v, tag: "", noCredit: false };
+    editor(c, "Thêm môn mới", d => {
+      if (!String(d.name).trim()) d.name = "Môn mới";
+      snap(); putAt(loc, { ...d, id: uid() }); commit();
+      if (loc.type === "pool") toast("Đã thêm vào khay môn học. Kéo lên sơ đồ để xếp.");
+    });
+  }
+
+  function editRow(r) {
+    const row = page().rows[r];
+    openModal(`
+      <h3>Học kỳ</h3>
+      <label for="rw-name">Tên học kỳ</label>
+      <input type="text" id="rw-name">
+      <div class="actions">
+        <div><button type="button" class="btn danger" id="rw-del">Xoá học kỳ này</button></div>
+        <div><button type="button" class="btn" id="rw-cancel">Huỷ</button><button type="button" class="btn primary" id="rw-save">Lưu</button></div>
+      </div>`, () => {
+      const inp = $("rw-name"); inp.value = row.label;
+      const saveIt = () => { const v = inp.value.trim(); if (v && v !== row.label) { snap(); row.label = v; commit(); } closeModal(); };
+      $("rw-save").onclick = saveIt;
+      inp.addEventListener("keydown", e => { if (e.key === "Enter") saveIt(); });
+      $("rw-cancel").onclick = closeModal;
+      let armed = false;
+      $("rw-del").onclick = e => {
+        if (!armed) { armed = true; e.target.textContent = "Bấm lần nữa để xoá (môn sẽ chuyển về khay)"; return; }
+        snap(); const p = page(); row.slots.forEach(c => c && p.pool.push(c)); p.rows.splice(r, 1); commit(); closeModal(); toast("Đã xoá học kỳ, các môn chuyển về khay");
+      };
+    });
+  }
+
+  function renamePage() {
+    openModal(`
+      <h3>Đổi tên trang</h3>
+      <label for="pg-name">Tên trang (chuyên ngành)</label>
+      <input type="text" id="pg-name">
+      <div class="actions"><div></div><div><button type="button" class="btn" id="pg-cancel">Huỷ</button><button type="button" class="btn primary" id="pg-save">Lưu</button></div></div>`, () => {
+      const inp = $("pg-name"); inp.value = page().name;
+      const saveIt = () => { const v = inp.value.trim(); if (v && v !== page().name) { snap(); page().name = v; commit(); } closeModal(); };
+      $("pg-save").onclick = saveIt; $("pg-cancel").onclick = closeModal;
+      inp.addEventListener("keydown", e => { if (e.key === "Enter") saveIt(); });
+    });
+  }
+
+  function cloneWithIds(p) {
+    const q = JSON.parse(JSON.stringify(p)); q.id = uid();
+    q.rows.forEach(r => { r.id = uid(); r.slots.forEach(c => c && (c.id = uid())); });
+    q.pool.forEach(c => c.id = uid());
+    return q;
+  }
+
+  $("btnCopy").onclick = () => {
+    snap(); const q = cloneWithIds(page()); q.name = page().name + " (bản sao)";
+    S.pages.splice(S.active + 1, 0, q); S.active++; linkSel = linkSel && new Set(); commit(); toast("Đã sao chép trang");
+  };
+  $("btnNew").onclick = () => {
+    snap(); S.pages.push({ id: uid(), name: "Trang mới " + (S.pages.length + 1), pool: [], groups: {}, rows: blankRows() });
+    S.active = S.pages.length - 1; linkSel = linkSel && new Set(); commit(); renamePage();
+  };
+  $("btnRename").onclick = renamePage;
+  $("btnDelPage").onclick = () => {
+    if (S.pages.length < 2) return;
+    openModal(`
+      <h3>Xoá trang “${esc(page().name)}”?</h3>
+      <p style="margin:0;color:var(--muted)">Toàn bộ môn học trên trang này sẽ bị xoá. Có thể bấm Hoàn tác ngay sau đó.</p>
+      <div class="actions"><div></div><div><button type="button" class="btn" id="dp-cancel">Huỷ</button><button type="button" class="btn primary" id="dp-ok">Xoá trang</button></div></div>`, () => {
+      $("dp-cancel").onclick = closeModal;
+      $("dp-ok").onclick = () => { snap(); S.pages.splice(S.active, 1); S.active = Math.max(0, S.active - 1); commit(); closeModal(); toast("Đã xoá trang"); };
+    });
+  };
+  $("btnAddCard").onclick = () => newCard({ type: "pool" });
+  $("btnUndo").onclick = undo;
+  $("btnAddRow").onclick = () => { snap(); page().rows.push(R("HK" + (page().rows.length + 1))); commit(); };
+
+  $("btnBackup").onclick = () => {
+    openModal(`
+      <h3>Sao lưu / Khôi phục</h3>
+      <p style="margin:0;color:var(--muted);font-size:13px">Dữ liệu chỉ lưu trên trình duyệt này. Muốn chuyển sang máy khác, sao chép đoạn mã bên dưới rồi dán vào ô này ở máy kia và bấm “Nạp dữ liệu”.</p>
+      <textarea id="bk-text" rows="8" spellcheck="false" style="font-size:12px"></textarea>
+      <div class="actions">
+        <div><button type="button" class="btn danger" id="bk-reset">Khôi phục 3 trang gốc</button></div>
+        <div><button type="button" class="btn" id="bk-copy">Sao chép</button><button type="button" class="btn primary" id="bk-load">Nạp dữ liệu</button></div>
+      </div>`, () => {
+      const ta = $("bk-text"); ta.value = JSON.stringify(S);
+      $("bk-copy").onclick = () => {
+        const done = () => toast("Đã sao chép");
+        try { navigator.clipboard.writeText(ta.value).then(done, () => { ta.select(); toast("Hãy nhấn Ctrl+C để sao chép"); }); }
+        catch (e) { ta.select(); toast("Hãy nhấn Ctrl+C để sao chép"); }
+      };
+      $("bk-load").onclick = () => {
+        try { const d = JSON.parse(ta.value); if (!valid(d)) throw 0; snap(); S = normalize(d); commit(); closeModal(); toast("Đã nạp dữ liệu"); }
+        catch (e) { toast("Đoạn mã không hợp lệ, hãy dán lại toàn bộ"); }
+      };
+      let armed = false;
+      $("bk-reset").onclick = e => {
+        if (!armed) { armed = true; e.target.textContent = "Bấm lần nữa để khôi phục"; return; }
+        snap(); S = defaults(); commit(); closeModal(); toast("Đã khôi phục 3 trang gốc. Bấm Hoàn tác nếu nhầm.");
+      };
+    });
+  };
+
+  document.addEventListener("keydown", e => {
+    if ($("modalRoot").innerHTML) return;
+    const tag = (e.target.tagName || "").toLowerCase();
+    if (tag === "input" || tag === "textarea" || tag === "select") return;
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") { e.preventDefault(); undo(); }
+    if (e.key === "Escape") { if (paint) { paint = null; render(); } else if (linkSel) { linkSel = null; render(); } }
+  });
+
+  render();
+})();
+</script>
+
+</body></html>
