@@ -265,6 +265,7 @@ body { padding:0; }
 .sp-row { display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; }
 .sp-row .vl { min-width:72px; }
 .hks b { color:#0d0d0d; font-weight:700; }
+.meta .nl { color:#0d0d0d; font-weight:700; }
 </style>
 
 <style>body{margin:0}[hidden]{display:none!important}</style>
@@ -486,7 +487,7 @@ const db = getFirestore(app);
         var hks = S.view === 'all' && r.total ? '<span class="hks">' + [1, 2, 3].map(function (h) { return sq(h) + 'HK' + h + ': <b>' + (r.per[h].total ? fmt(r.per[h].total) : '—') + '</b>'; }).join('  ·  ') + '</span>' : '';
         return '<div class="row" data-dept="' + (r.t.dept || '') + '">' +
           '<button class="row-btn" data-act="toggle" data-id="' + esc(r.t.id) + '" aria-expanded="' + open + '">' +
-          '<span class="who"><span class="nm">' + esc(r.t.name) + '</span><span class="meta"><i class="dot"></i>' + (r.t.registered ? deptOf(r.t.dept).short + ' · ' + (r.total ? r.n + ' lớp' : 'Chưa nhập') : 'Chưa đăng nhập lần nào') + (r.t.guest ? ' <span class="guest">Thỉnh giảng</span>' : '') + '</span>' + hks + '</span>' +
+          '<span class="who"><span class="nm">' + esc(r.t.name) + '</span><span class="meta"><i class="dot"></i>' + (r.t.registered ? deptOf(r.t.dept).short + ' · ' + (r.total ? '<b class="nl">' + r.n + '</b> lớp' : 'Chưa nhập') : 'Chưa đăng nhập lần nào') + (r.t.guest ? ' <span class="guest">Thỉnh giảng</span>' : '') + '</span>' + hks + '</span>' +
           '<span class="bar">' + segs + (r.total && mean ? '<span class="tick" style="left:' + (mean / max * 100) + '%"></span>' : '') + '</span>' +
           (r.total ? '<span class="num">' + fmt(r.total) + '<small>tiết</small></span>' : '<span class="num none">—</span>') +
           '</button><div class="detail"' + (open ? '' : ' hidden') + '>' + det + '</div></div>';
