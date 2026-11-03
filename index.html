@@ -254,6 +254,13 @@ body { padding:0; }
   .wrap > #status { margin-top:0; }
 }
 
+
+.viewbar { display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; padding:12px 0; border-bottom:1.5px solid #0d0d0d; }
+.vl { font-size:12px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
+.sq { display:inline-block; width:10px; height:10px; margin-right:6px; box-shadow:0 0 0 1px rgba(128,128,128,.5); }
+.hks { font-size:13px; color:var(--muted); margin-top:2px; white-space:pre-wrap; }
+.dh { margin:12px 0 0; font-size:13px; font-weight:700; display:flex; align-items:center; }
+.lgi { margin-right:16px; font-weight:600; color:#0d0d0d; }
 </style>
 
 <style>body{margin:0}[hidden]{display:none!important}</style>
@@ -267,7 +274,6 @@ body { padding:0; }
     </div>
     <div class="filters">
       <label class="f">Năm học<select id="fYear"></select></label>
-      <label class="f">Học kỳ<select id="fHk"></select></label>
     </div>
   </header>
 
@@ -373,9 +379,16 @@ const db = getFirestore(app);
   var S = { year: '2026–2027', hk: 1, dept: 'all', tab: 'enter', open: {}, err: '', dbErr: '',
     key: null, isAdmin: false, canExcel: false, isManager: false, signedIn: false, authReady: false, teachersLoaded: false,
     au: { mode: 'login', slug: '', email: '', pw: '', pw2: '', dept: 'han', guest: false, err: '', info: '', busy: false },
-    d: { q: '', c: '', cr: 3, nl: 1, p: 100 } };
+    d: { q: '', c: '', cr: 3, nl: 1, p: 100 }, view: 'all' };
   var skey = function () { return S.year.replace('–', '-') + '_' + S.hk; };
   var key = function () { return skey(); };
+  var semK = function (h) { return S.year.replace('–', '-') + '_' + h; };
+  var HCOL = ['#0d0d0d', '#ff5a2b', '#9a9a94'];
+  var sq = function (h) { return '<i class="sq" style="background:' + HCOL[h - 1] + '"></i>'; };
+  function semPick(p) {
+    return '<div class="grid2"><label class="field"><span>Năm học</span><select id="' + p + 'Year">' + YEARS.map(function (y) { return '<option' + (y === S.year ? ' selected' : '') + '>' + y + '</option>'; }).join('') + '</select></label>' +
+      '<label class="field"><span>Học kỳ</span><select id="' + p + 'Hk">' + HKS.map(function (h) { return '<option value="' + h + '"' + (h === S.hk ? ' selected' : '') + '>Học kỳ ' + h + '</option>'; }).join('') + '</select></label></div>';
+  }
   var freshAu = function () { return { mode: 'login', slug: '', email: '', pw: '', pw2: '', dept: 'han', guest: false, err: '', info: '', busy: false }; };
 
   function statusOf() {
@@ -402,11 +415,12 @@ const db = getFirestore(app);
   function renderBanners() {
     var h = '';
     if (S.dbErr) h += '<div class="status locked"><b>Chưa đọc được dữ liệu</b><span>' + esc(S.dbErr === 'permission-denied' ? 'Rules của Firestore chưa đúng hoặc chưa Publish.' : 'Mã lỗi: ' + S.dbErr) + '</span></div>';
+    if (S.tab === 'sum') { $('#status').innerHTML = h; return; }
     var st = statusOf(), s = SEM[skey()] || {};
-    if (st === 'open') h += '<div class="status open"><b>Đang mở nhập</b><span>Thầy cô tự nhập đến hết ngày ' + fd(s.close) + '.</span></div>';
-    else if (st === 'soon') h += '<div class="status soon"><b>Chưa mở nhập</b><span>Mở từ ' + fd(s.open) + ' đến ' + fd(s.close) + '.</span></div>';
-    else if (st === 'unset') h += '<div class="status soon"><b>Chưa mở nhập</b><span>Khoa chưa đặt thời hạn nhập cho học kỳ này.</span></div>';
-    else h += '<div class="status locked"><b>Đã khóa</b><span>Học kỳ này chỉ xem, không sửa được. Liên hệ khoa nếu cần chỉnh.</span></div>';
+    if (st === 'open') h += '<div class="status open"><b>HK' + S.hk + ' · Đang mở nhập</b><span>Thầy cô tự nhập đến hết ngày ' + fd(s.close) + '.</span></div>';
+    else if (st === 'soon') h += '<div class="status soon"><b>HK' + S.hk + ' · Chưa mở nhập</b><span>Mở từ ' + fd(s.open) + ' đến ' + fd(s.close) + '.</span></div>';
+    else if (st === 'unset') h += '<div class="status soon"><b>HK' + S.hk + ' · Chưa mở nhập</b><span>Khoa chưa đặt thời hạn nhập cho học kỳ này.</span></div>';
+    else h += '<div class="status locked"><b>HK' + S.hk + ' · Đã khóa</b><span>Học kỳ này chỉ xem, không sửa được. Liên hệ khoa nếu cần chỉnh.</span></div>';
     $('#status').innerHTML = h;
   }
 
@@ -417,10 +431,15 @@ const db = getFirestore(app);
       $('#main').innerHTML = '<section class="panel"><div class="panel-h"><h2>Số tiết theo giảng viên</h2></div><div class="body"><p class="note">Bảng tổng hợp chỉ dành cho thầy cô trong khoa. Thầy cô đăng nhập để xem.</p><div class="btnrow"><button class="btn" type="button" data-act="gologin">Đăng nhập</button></div></div></section>';
       return;
     }
-    var k = key();
+    var views = S.view === 'all' ? [1, 2, 3] : [Number(S.view)];
     var rows = people().filter(function (t) { return S.dept === 'all' || (S.dept === 'guest' ? t.guest : t.dept === S.dept); }).map(function (t) {
-      var list = A.filter(function (a) { return a.sem === k && a.tid === t.id; });
-      return { t: t, list: list, total: list.reduce(function (s, a) { return s + tiet(a); }, 0) };
+      var per = {}, n = 0, total = 0;
+      views.forEach(function (h) {
+        var l = A.filter(function (a) { return a.sem === semK(h) && a.tid === t.id; });
+        per[h] = { list: l, total: l.reduce(function (s, a) { return s + tiet(a); }, 0) };
+        n += l.length; total += per[h].total;
+      });
+      return { t: t, per: per, n: n, total: total };
     });
     rows.sort(function (a, b) { return b.total - a.total || a.t.name.localeCompare(b.t.name, 'vi'); });
     var entered = rows.filter(function (r) { return r.total > 0; });
@@ -431,6 +450,9 @@ const db = getFirestore(app);
     var chips = '<button class="chip" data-act="dept" data-v="all" aria-pressed="' + (S.dept === 'all') + '">Tất cả</button>' +
       UNITS.map(function (d) { return '<button class="chip" data-act="dept" data-v="' + d.id + '" aria-pressed="' + (S.dept === d.id) + '">' + d.name + '</button>'; }).join('') +
       '<button class="chip" data-act="dept" data-v="guest" aria-pressed="' + (S.dept === 'guest') + '">Thỉnh giảng</button>';
+    var vchips = '<button class="chip" data-act="view" data-v="all" aria-pressed="' + (S.view === 'all') + '">Cả năm học</button>' +
+      [1, 2, 3].map(function (h) { return '<button class="chip" data-act="view" data-v="' + h + '" aria-pressed="' + (S.view === h) + '">' + sq(h) + 'Học kỳ ' + h + '</button>'; }).join('');
+    var viewbar = '<div class="viewbar"><span class="vl">Xem theo</span><div class="chips">' + vchips + '</div></div>';
 
     var body;
     if (!rows.length) {
@@ -438,31 +460,47 @@ const db = getFirestore(app);
     } else {
       body = rows.map(function (r) {
         var open = !!S.open[r.t.id];
-        var w = r.total / max * 100;
-        var groups = {}, order = [];
-        r.list.forEach(function (a) {
-          var g = a.c + '|' + a.cr + '|' + a.p;
-          if (!groups[g]) { groups[g] = { a: a, n: 0, t: 0 }; order.push(g); }
-          groups[g].n++; groups[g].t += tiet(a);
+        var groupsOf = function (list) {
+          var groups = {}, order = [];
+          list.forEach(function (a) {
+            var g = a.c + '|' + a.cr + '|' + a.p;
+            if (!groups[g]) { groups[g] = { a: a, n: 0, t: 0 }; order.push(g); }
+            groups[g].n++; groups[g].t += tiet(a);
+          });
+          order.sort(function (x, y) { return byCourse(groups[x].a, groups[y].a); });
+          return order.map(function (g) { return groups[g]; });
+        };
+        var det = '';
+        views.forEach(function (h) {
+          var pr = r.per[h];
+          if (!pr.list.length) return;
+          det += (S.view === 'all' ? '<h4 class="dh">' + sq(h) + 'Học kỳ ' + h + ' · ' + fmt(pr.total) + ' tiết</h4>' : '') + '<ul>' + groupsOf(pr.list).map(function (o) {
+            var c = cById(o.a.c);
+            return '<li><span>' + esc(c ? c.name : '(môn đã xóa)') + '<span class="co">' + o.a.cr + ' tín chỉ' + (o.n > 1 ? ' · ' + o.n + ' lớp' : '') + (o.a.p < 100 ? ' · tỷ lệ ' + o.a.p + '%' : '') + '</span></span><span class="t">' + fmt(o.t) + ' tiết</span></li>';
+          }).join('') + '</ul>';
         });
-        order.sort(function (x, y) { return byCourse(groups[x].a, groups[y].a); });
-        var det = order.length ? '<ul>' + order.map(function (g) {
-          var o = groups[g], c = cById(o.a.c);
-          return '<li><span>' + esc(c ? c.name : '(môn đã xóa)') + '<span class="co">' + o.a.cr + ' tín chỉ' + (o.n > 1 ? ' · ' + o.n + ' lớp' : '') + (o.a.p < 100 ? ' · tỷ lệ ' + o.a.p + '%' : '') + '</span></span><span class="t">' + fmt(o.t) + ' tiết</span></li>';
-        }).join('') + '</ul>' : '<p class="hint" style="margin-top:8px">Chưa nhập môn nào.</p>';
+        if (!det) det = '<p class="hint" style="margin-top:8px">Chưa nhập môn nào.</p>';
+        var x = 0, segs = '';
+        views.forEach(function (h) {
+          var w = r.per[h].total / max * 100;
+          if (w > 0) segs += '<span class="fill" style="left:' + x + '%;width:' + w + '%;background:' + HCOL[h - 1] + '"></span>';
+          x += w;
+        });
+        var hks = S.view === 'all' && r.total ? '<span class="hks">' + [1, 2, 3].map(function (h) { return sq(h) + 'HK' + h + ' ' + (r.per[h].total ? fmt(r.per[h].total) : '—'); }).join('  ·  ') + '</span>' : '';
         return '<div class="row" data-dept="' + (r.t.dept || '') + '">' +
           '<button class="row-btn" data-act="toggle" data-id="' + esc(r.t.id) + '" aria-expanded="' + open + '">' +
-          '<span class="who"><span class="nm">' + esc(r.t.name) + '</span><span class="meta"><i class="dot"></i>' + (r.t.registered ? deptOf(r.t.dept).short + ' · ' + (r.total ? r.list.length + ' lớp' : 'Chưa nhập') : 'Chưa đăng nhập lần nào') + (r.t.guest ? ' <span class="guest">Thỉnh giảng</span>' : '') + '</span></span>' +
-          '<span class="bar"><span class="fill" style="width:' + w + '%"></span>' + (r.total && mean ? '<span class="tick" style="left:' + (mean / max * 100) + '%"></span>' : '') + '</span>' +
+          '<span class="who"><span class="nm">' + esc(r.t.name) + '</span><span class="meta"><i class="dot"></i>' + (r.t.registered ? deptOf(r.t.dept).short + ' · ' + (r.total ? r.n + ' lớp' : 'Chưa nhập') : 'Chưa đăng nhập lần nào') + (r.t.guest ? ' <span class="guest">Thỉnh giảng</span>' : '') + '</span>' + hks + '</span>' +
+          '<span class="bar">' + segs + (r.total && mean ? '<span class="tick" style="left:' + (mean / max * 100) + '%"></span>' : '') + '</span>' +
           (r.total ? '<span class="num">' + fmt(r.total) + '<small>tiết</small></span>' : '<span class="num none">—</span>') +
           '</button><div class="detail"' + (open ? '' : ' hidden') + '>' + det + '</div></div>';
       }).join('') +
       '<div class="total-row"><span>Tổng ' + (S.dept === 'all' ? 'cả khoa' : S.dept === 'guest' ? 'giảng viên thỉnh giảng' : deptOf(S.dept).name) + '</span><span class="num">' + fmt(sum) + '<small>tiết</small></span></div>' +
-      '<div class="legend">Vạch đứng trên thanh là mức trung bình (' + fmt(Math.round(mean)) + ' tiết/người). Bấm vào tên để xem các môn.</div>';
+      '<div class="legend">' + (S.view === 'all' ? [1, 2, 3].map(function (h) { return '<span class="lgi">' + sq(h) + 'Học kỳ ' + h + '</span>'; }).join('') : '') + 'Vạch đứng trên thanh là mức trung bình (' + fmt(Math.round(mean)) + ' tiết/người). Bấm vào tên để xem các môn.</div>';
     }
 
+    var ttl = S.view === 'all' ? 'Cả năm học ' + S.year : 'Học kỳ ' + S.view + ', ' + S.year;
     $('#main').innerHTML =
-      '<section class="panel"><div class="panel-h"><h2>Số tiết theo giảng viên</h2>' + (S.canExcel ? '<button class="btn small" type="button" data-act="excel">Tải Excel</button>' : '') + '<div class="chips">' + chips + '</div></div>' +
+      '<section class="panel"><div class="panel-h"><h2>Số tiết theo giảng viên · ' + ttl + '</h2>' + (S.canExcel ? '<button class="btn small" type="button" data-act="excel">Tải Excel</button>' : '') + '<div class="chips">' + chips + '</div></div>' + viewbar +
       '<div class="facts"><span>Đã nhập <b>' + entered.length + '/' + rows.length + '</b> giảng viên</span><span>Tổng <b>' + fmt(sum) + '</b> tiết</span><span>Trung bình <b>' + fmt(Math.round(mean)) + '</b> tiết/người</span></div>' +
       body + '</section>';
   }
@@ -583,7 +621,7 @@ const db = getFirestore(app);
       '<p class="err" id="sErr"></p><div class="btnrow"><button class="btn" type="submit">Thêm vào danh sách</button></div>' +
       '<p class="hint">Chỉ thêm tên vào danh sách. Giảng viên mới tự chọn tên mình và tạo mật khẩu ở lần vào đầu tiên.</p></form></div></section>';
     $('#main').innerHTML = head +
-      '<div class="hello"><span>Đang nhập với tên <b>' + esc(me.name) + '</b></span><button class="btn ghost small" type="button" data-act="logout">Đăng xuất</button></div>' +
+      '<div class="hello"><span>Đang nhập với tên <b>' + esc(me.name) + '</b></span><button class="btn ghost small" type="button" data-act="logout">Đăng xuất</button></div>' + semPick('e') +
       form + '<div class="field" style="gap:10px"><h3 class="sect-h">Các môn thầy cô đã nhập</h3>' + list + '</div></div></section>' + mgr;
   }
 
@@ -603,7 +641,7 @@ const db = getFirestore(app);
         (R[p.id] && !p.registered ? '<button class="btn ghost small" type="button" data-act="delname" data-id="' + esc(p.id) + '">Xóa</button>' : '') + '</li>';
     }).join('') + '</ul>' : '';
     $('#main').innerHTML =
-      '<section class="panel"><div class="panel-h"><h2>Thời hạn nhập · Học kỳ ' + S.hk + ', ' + S.year + '</h2></div><div class="body">' +
+      '<section class="panel"><div class="panel-h"><h2>Thời hạn nhập · Học kỳ ' + S.hk + ', ' + S.year + '</h2></div><div class="body">' + semPick('a') +
       '<div class="dates"><label class="field"><span>Mở nhập từ</span><input type="date" id="dOpen" value="' + esc(s.open || '') + '"></label><label class="field"><span>Khóa sau ngày</span><input type="date" id="dClose" value="' + esc(s.close || '') + '"></label></div>' +
       '<div class="btnrow">' + (st === 'open' ? '<button class="btn ghost" data-act="force" data-v="locked">Khóa ngay</button>' : '<button class="btn" data-act="force" data-v="open">Mở nhập ngay</button>') +
       (s.force ? '<button class="btn ghost" data-act="force" data-v="">Theo ngày đã đặt</button>' : '') + '</div>' +
@@ -648,42 +686,13 @@ const db = getFirestore(app);
     if (!S.canExcel) return;
     if (typeof ExcelJS === 'undefined') { toast('Chưa tải được công cụ tạo Excel. Kiểm tra mạng rồi thử lại.'); return; }
     try {
-      var k = key();
       var ppl = people().sort(function (a, b) { return a.name.localeCompare(b.name, 'vi'); });
       var FONT = { name: 'Times New Roman', size: 13 };
       var wb = new ExcelJS.Workbook();
-      var heads = ['STT', 'Giảng viên', 'Bộ môn', 'Thỉnh giảng', 'Môn học', 'Tín chỉ', 'Số lớp', 'Tỷ lệ giờ dạy (%)', 'Số tiết'];
-      var widths = [6, 28, 24, 14, 48, 9, 9, 18, 11];
-      function addSheet(name, filter) {
-        var ws = wb.addWorksheet(name, { views: [{ state: 'frozen', xSplit: 0, ySplit: 1 }] });
-        ws.columns = widths.map(function (w) { return { width: w, style: { font: FONT } }; });
-        ws.addRow(heads);
-        var n = 0, gl = 0, gt = 0, merges = [];
-        ppl.filter(filter).forEach(function (p) {
-          var list = A.filter(function (a) { return a.sem === k && a.tid === p.id; }).sort(byCourse);
-          if (!list.length) return;
-          n++;
-          var groups = {}, order = [], tl = 0, tt = 0;
-          list.forEach(function (a) {
-            var g = a.c + '|' + a.cr + '|' + a.p;
-            if (!groups[g]) { groups[g] = { a: a, n: 0, t: 0 }; order.push(g); }
-            groups[g].n++; groups[g].t += tiet(a);
-          });
-          var r0 = ws.rowCount + 1;
-          order.forEach(function (g, i) {
-            var o = groups[g], c = cById(o.a.c);
-            ws.addRow([i === 0 ? n : '', i === 0 ? p.name : '', i === 0 ? (p.dept ? deptOf(p.dept).name : '') : '', p.guest ? 'Thỉnh giảng' : '', c ? c.name : '(môn đã xóa)', o.a.cr, o.n, o.a.p, o.t]);
-            tl += o.n; tt += o.t;
-          });
-          if (order.length > 1) merges.push([r0, ws.rowCount]);
-          ws.addRow(['', '', '', '', 'Cộng', '', tl, '', tt]);
-          gl += tl; gt += tt;
-        });
-        ws.addRow([]);
-        ws.addRow(['', '', '', '', 'TỔNG CỘNG', '', gl, '', gt]);
-        merges.forEach(function (m) { [1, 2, 3].forEach(function (col) { ws.mergeCells(m[0], col, m[1], col); }); });
+      var H3 = [1, 2, 3];
+      function styleSheet(ws, ncol) {
         ws.eachRow({ includeEmpty: true }, function (row, rn) {
-          for (var c = 1; c <= heads.length; c++) {
+          for (var c = 1; c <= ncol; c++) {
             var cell = row.getCell(c);
             cell.font = rn === 1 ? { name: FONT.name, size: FONT.size, bold: true } : { name: FONT.name, size: FONT.size };
             if (rn === 1) cell.alignment = { vertical: 'top', horizontal: 'center', wrapText: true };
@@ -693,13 +702,65 @@ const db = getFirestore(app);
         });
         ws.getRow(1).height = 24;
       }
+      var tietOf = function (pid, h) { return A.filter(function (a) { return a.sem === semK(h) && a.tid === pid; }).reduce(function (s, a) { return s + tiet(a); }, 0); };
+      /* Sheet 1: tổng hợp nhanh */
+      var q = wb.addWorksheet('Tổng hợp nhanh', { views: [{ state: 'frozen', xSplit: 0, ySplit: 1 }] });
+      var qh = ['STT', 'Giảng viên', 'Bộ môn', 'Thỉnh giảng', 'Số tiết HK1', 'Số tiết HK2', 'Số tiết HK3', 'Tổng số tiết'];
+      q.columns = [6, 28, 24, 14, 13, 13, 13, 14].map(function (w) { return { width: w, style: { font: FONT } }; });
+      q.addRow(qh);
+      var qs = [0, 0, 0];
+      ppl.forEach(function (p, i) {
+        var t = H3.map(function (h) { return tietOf(p.id, h); });
+        t.forEach(function (v, j) { qs[j] += v; });
+        q.addRow([i + 1, p.name, p.dept ? deptOf(p.dept).name : '', p.guest ? 'Thỉnh giảng' : '', t[0], t[1], t[2], t[0] + t[1] + t[2]]);
+      });
+      q.addRow([]);
+      q.addRow(['', '', '', 'TỔNG CỘNG', qs[0], qs[1], qs[2], qs[0] + qs[1] + qs[2]]);
+      styleSheet(q, qh.length);
+      /* Các sheet chi tiết */
+      var heads = ['STT', 'Giảng viên', 'Bộ môn', 'Thỉnh giảng', 'Môn học', 'Tín chỉ', 'Tỷ lệ giờ dạy (%)', 'Số lớp HK1', 'Số lớp HK2', 'Số lớp HK3', 'Số tiết HK1', 'Số tiết HK2', 'Số tiết HK3', 'Tổng số tiết'];
+      var widths = [6, 28, 24, 14, 46, 9, 14, 10, 10, 10, 11, 11, 11, 13];
+      function addSheet(name, filter) {
+        var ws = wb.addWorksheet(name, { views: [{ state: 'frozen', xSplit: 0, ySplit: 1 }] });
+        ws.columns = widths.map(function (w) { return { width: w, style: { font: FONT } }; });
+        ws.addRow(heads);
+        var n = 0, gl = [0, 0, 0], gt = [0, 0, 0], merges = [];
+        ppl.filter(filter).forEach(function (p) {
+          var groups = {}, order = [], any = false;
+          H3.forEach(function (h) {
+            A.filter(function (a) { return a.sem === semK(h) && a.tid === p.id; }).forEach(function (a) {
+              any = true;
+              var g = a.c + '|' + a.cr + '|' + a.p;
+              if (!groups[g]) { groups[g] = { a: a, nl: [0, 0, 0], t: [0, 0, 0] }; order.push(g); }
+              groups[g].nl[h - 1]++; groups[g].t[h - 1] += tiet(a);
+            });
+          });
+          if (!any) return;
+          n++;
+          order.sort(function (x, y) { return byCourse(groups[x].a, groups[y].a); });
+          var tl = [0, 0, 0], tt = [0, 0, 0], r0 = ws.rowCount + 1;
+          order.forEach(function (g, i) {
+            var o = groups[g], c = cById(o.a.c);
+            var z = function (v) { return v || ''; };
+            ws.addRow([i === 0 ? n : '', i === 0 ? p.name : '', i === 0 ? (p.dept ? deptOf(p.dept).name : '') : '', i === 0 && p.guest ? 'Thỉnh giảng' : '', c ? c.name : '(môn đã xóa)', o.a.cr, o.a.p, z(o.nl[0]), z(o.nl[1]), z(o.nl[2]), z(o.t[0]), z(o.t[1]), z(o.t[2]), o.t[0] + o.t[1] + o.t[2]]);
+            for (var j = 0; j < 3; j++) { tl[j] += o.nl[j]; tt[j] += o.t[j]; }
+          });
+          if (order.length > 1) merges.push([r0, ws.rowCount]);
+          ws.addRow(['', '', '', '', 'Cộng', '', '', tl[0], tl[1], tl[2], tt[0], tt[1], tt[2], tt[0] + tt[1] + tt[2]]);
+          for (var j = 0; j < 3; j++) { gl[j] += tl[j]; gt[j] += tt[j]; }
+        });
+        ws.addRow([]);
+        ws.addRow(['', '', '', '', 'TỔNG CỘNG', '', '', gl[0], gl[1], gl[2], gt[0], gt[1], gt[2], gt[0] + gt[1] + gt[2]]);
+        merges.forEach(function (m) { [1, 2, 3, 4].forEach(function (col) { ws.mergeCells(m[0], col, m[1], col); }); });
+        styleSheet(ws, heads.length);
+      }
       addSheet('Cả khoa', function () { return true; });
       UNITS.forEach(function (d) { addSheet(d.name, function (p) { return p.dept === d.id; }); });
       addSheet('Thỉnh giảng', function (p) { return p.guest; });
       var buf = await wb.xlsx.writeBuffer();
       var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       var url = URL.createObjectURL(blob), a = document.createElement('a');
-      a.href = url; a.download = 'gio-day_' + S.year.replace('–', '-') + '_HK' + S.hk + '.xlsx';
+      a.href = url; a.download = 'gio-day_' + S.year.replace('–', '-') + '.xlsx';
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
     } catch (err) { toast('Chưa tạo được file Excel. Thử lại sau.'); }
@@ -707,9 +768,7 @@ const db = getFirestore(app);
 
   /* ---------- Sự kiện ---------- */
   $('#fYear').innerHTML = YEARS.map(function (y) { return '<option' + (y === S.year ? ' selected' : '') + '>' + y + '</option>'; }).join('');
-  $('#fHk').innerHTML = HKS.map(function (h) { return '<option value="' + h + '">Học kỳ ' + h + '</option>'; }).join('');
   $('#fYear').addEventListener('change', function (e) { S.year = e.target.value; render(); });
-  $('#fHk').addEventListener('change', function (e) { S.hk = Number(e.target.value); render(); });
   document.querySelector('.tabs').addEventListener('click', function (e) {
     var b = e.target.closest('.tab'); if (!b) return;
     S.tab = b.getAttribute('data-tab'); S.err = ''; S.confirm = null; render();
@@ -723,6 +782,7 @@ const db = getFirestore(app);
     var act = el.getAttribute('data-act'), id = el.getAttribute('data-id');
     try {
       if (act === 'dept') { S.dept = el.getAttribute('data-v'); render(); }
+      else if (act === 'view') { var vv = el.getAttribute('data-v'); S.view = vv === 'all' ? 'all' : Number(vv); render(); }
       else if (act === 'toggle') {
         var open = el.getAttribute('aria-expanded') !== 'true';
         S.open[id] = open; el.setAttribute('aria-expanded', open);
@@ -766,7 +826,9 @@ const db = getFirestore(app);
   main.addEventListener('change', async function (e) {
     var el = e.target, act = el.getAttribute('data-act');
     try {
-      if (el.id === 'uSlug') { var pp = personOf(el.value); S.au.slug = el.value; S.au.dept = pp && pp.dept ? pp.dept : 'han'; S.au.mode = pp && pp.registered ? (pp.pw ? 'login' : 'recreate') : 'create'; S.au.err = ''; S.au.pw = ''; S.au.pw2 = ''; render(); }
+      if (el.id === 'eYear' || el.id === 'aYear') { S.year = el.value; $('#fYear').value = S.year; render(); }
+      else if (el.id === 'eHk' || el.id === 'aHk') { S.hk = Number(el.value); render(); }
+      else if (el.id === 'uSlug') { var pp = personOf(el.value); S.au.slug = el.value; S.au.dept = pp && pp.dept ? pp.dept : 'han'; S.au.mode = pp && pp.registered ? (pp.pw ? 'login' : 'recreate') : 'create'; S.au.err = ''; S.au.pw = ''; S.au.pw2 = ''; render(); }
       else if (el.id === 'uDept') S.au.dept = el.value;
       else if (el.id === 'uGuest') S.au.guest = el.checked;
       else if (act === 'pick') {
