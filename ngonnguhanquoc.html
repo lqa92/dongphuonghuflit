@@ -132,6 +132,7 @@ body.linking .card { cursor: pointer; }
 .gchip { position: absolute; z-index: 3; transform: translate(-50%, -50%); background: var(--g); color: #fff; font-size: 10.5px; font-weight: 700;
   border-radius: 999px; padding: 1px 6px; border: 2px solid var(--surface); white-space: nowrap; }
 .gchip.plus { font-size: 13px; line-height: 15px; padding: 0 5px; }
+.gchip.olab { background: var(--surface); color: var(--g); border: 1.5px solid var(--g); }
 .oframe { position: absolute; z-index: 0; border: 1.5px solid var(--g); border-radius: 10px; pointer-events: none; }
 .glinks { position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none; overflow: visible; }
 
@@ -420,7 +421,14 @@ body.linking .card { cursor: pointer; }
   const gKeys = p => Object.keys(p.groups || {});
   const gLetter = (p, g) => String.fromCharCode(65 + gKeys(p).indexOf(g));
   const gMembers = (p, g) => allCards(p).filter(c => c.group === g);
-  function gOptions(p, g) { const m = {}; p.rows.flatMap(r => r.slots).filter(c => c && c.group === g).forEach(c => { const k = c.opt || c.id; m[k] = (m[k] || 0) + credits(c); }); return m; }
+  function optPickOf(p, g, o, size) { const G = p.groups[g]; const k = (G && G.optPick && G.optPick[o]) | 0; return k >= 1 ? Math.min(k, size) : size; }
+  function gOptions(p, g) {
+    const lists = {};
+    p.rows.flatMap(r => r.slots).filter(c => c && c.group === g).forEach(c => { const k = c.opt || c.id; (lists[k] = lists[k] || []).push(credits(c)); });
+    const m = {};
+    for (const k in lists) { const v = lists[k].sort((a, b) => b - a); m[k] = v.slice(0, optPickOf(p, g, k, v.length)).reduce((a, b) => a + b, 0); }
+    return m;
+  }
   function gPick(p, g) { const n = Object.keys(gOptions(p, g)).length; return Math.min(Math.max(1, (p.groups[g] && p.groups[g].pick) | 0 || 1), Math.max(1, n)); }
   function gCredits(p, g) {
     const vals = Object.values(gOptions(p, g)).sort((a, b) => b - a);
@@ -565,11 +573,15 @@ body.linking .card { cursor: pointer; }
         grid.prepend(f);
         return box;
       });
+      const optSize = {};
+      pos.forEach(q => { if (q.c.opt) optSize[q.c.opt] = (optSize[q.c.opt] || 0) + 1; });
+      const partial = o => o && optPickOf(p, g, o, optSize[o]) < optSize[o];
       for (let i = 1; i < pos.length; i++) {
         const a = pos[i - 1], b = pos[i];
         if (a.r !== b.r || b.s !== a.s + 1) continue;
         const ea = slotAt(a.r, a.s), eb = slotAt(b.r, b.s);
         const same = (a.c.opt || a.c.id) === (b.c.opt || b.c.id);
+        if (same && partial(a.c.opt)) continue;
         const chip = document.createElement("div");
         chip.className = "gchip" + (same ? " plus" : ""); chip.style.setProperty("--g", color);
         chip.textContent = same ? "+" : "hoặc";
@@ -580,8 +592,19 @@ body.linking .card { cursor: pointer; }
       }
       const byOpt = {};
       pos.forEach(q => { if (q.c.opt) (byOpt[q.c.opt] = byOpt[q.c.opt] || []).push(q); });
-      Object.values(byOpt).forEach(list => {
+      Object.entries(byOpt).forEach(([o, list]) => {
         if (list.length < 2) return;
+        if (partial(o)) {
+          const a = slotAt(list[0].r, list[0].s), b = slotAt(list[list.length - 1].r, list[list.length - 1].s);
+          const lab = document.createElement("div");
+          lab.className = "gchip olab"; lab.style.setProperty("--g", color);
+          lab.textContent = `Chọn ${optPickOf(p, g, o, list.length)} trong ${list.length} môn`;
+          lab.title = "Phương án này chỉ cần học một số môn trong các môn được bao";
+          const sameRow = list[0].r === list[list.length - 1].r;
+          lab.style.left = (sameRow ? (a.offsetLeft + b.offsetLeft + b.offsetWidth) / 2 : a.offsetLeft + a.offsetWidth / 2) + "px";
+          lab.style.top = a.offsetTop + a.offsetHeight + 3 + "px";
+          grid.append(lab);
+        }
         const oruns = [];
         list.forEach(q => { const l = oruns[oruns.length - 1]; if (l && l.r === q.r && l.s1 === q.s - 1) l.s1 = q.s; else oruns.push({ r: q.r, s0: q.s, s1: q.s }); });
         oruns.forEach(run => {
@@ -726,7 +749,11 @@ body.linking .card { cursor: pointer; }
     const sel = allCards(p).filter(c => linkSel.has(c.id));
     const gs = new Set(sel.map(c => c.group || ""));
     if (gs.size !== 1 || !sel[0].group) { toast("Hãy chọn các môn trong cùng một nhóm tự chọn"); return; }
-    snap(); const o = uid(); sel.forEach(c => c.opt = o);
+    const g = sel[0].group, olds = new Set(sel.map(c => c.opt).filter(Boolean));
+    snap(); const o = uid();
+    allCards(p).forEach(c => { if (c.group === g && (linkSel.has(c.id) || (c.opt && olds.has(c.opt)))) c.opt = o; });
+    const G = p.groups[g]; const oldPick = [...olds].map(x => G.optPick && G.optPick[x]).find(Boolean);
+    if (oldPick) { G.optPick = G.optPick || {}; G.optPick[o] = oldPick; }
     linkSel = new Set(); commit(); toast("Đã gộp: các môn này học chung, tính là 1 lựa chọn");
   };
   $("lnkSplit").onclick = () => {
@@ -771,6 +798,10 @@ body.linking .card { cursor: pointer; }
       <select id="ed-group"><option value="">Không thuộc nhóm nào</option>${gopts}</select>
       <label id="ed-pickrow" for="ed-pick">Số môn phải chọn trong nhóm <small id="ed-picknote"></small>
         <input type="number" id="ed-pick" min="1" step="1"></label>
+      <label id="ed-optrow" for="ed-opt">Phương án <small>gộp nhiều môn thành một lựa chọn</small>
+        <select id="ed-opt"></select></label>
+      <label id="ed-opkrow" for="ed-opk">Số môn phải học trong phương án này <small id="ed-opknote"></small>
+        <input type="number" id="ed-opk" min="1" step="1"></label>
       <div class="note">Muốn tạo nhóm mới: đóng hộp này, bấm “Liên kết môn tự chọn” trên thanh công cụ rồi chọn các môn.</div>
       <label for="ed-tag">Nhãn nhỏ <small>không bắt buộc, VD: Học kỳ hè</small></label>
       <input type="text" id="ed-tag">
@@ -785,10 +816,34 @@ body.linking .card { cursor: pointer; }
       const name = $("ed-name"), tag = $("ed-tag"), lt = $("ed-lt"), th = $("ed-th"), nc = $("ed-nc"), colr = $("ed-color"), grp = $("ed-group");
       name.value = d.name; tag.value = d.tag || ""; lt.value = d.lt ?? 0; th.value = d.th ?? 0; nc.checked = !!d.noCredit; colr.value = d.color || cG;
       grp.value = d.group && p.groups[d.group] ? d.group : "";
+      const optSel = $("ed-opt"), opk = $("ed-opk");
+      const bundleMembers = (g, o) => allCards(p).filter(c => c.group === g && c.opt === o && c.id !== card.id);
+      const buildOpts = () => {
+        const g = grp.value; $("ed-optrow").hidden = !g;
+        const prev = optSel.dataset.init ? optSel.value : (card.group === g ? card.opt || "" : "");
+        optSel.dataset.init = "1";
+        if (!g) { optSel.innerHTML = ""; return; }
+        const opts = [...new Set(allCards(p).filter(c => c.group === g && c.opt).map(c => c.opt))].filter(o => bundleMembers(g, o).length);
+        optSel.innerHTML = `<option value="">Lựa chọn riêng (không gộp)</option>` + opts.map(o => {
+          const names = bundleMembers(g, o).map(c => String(c.name).split("\n")[0]).join(", ");
+          return `<option value="${o}">Gộp với: ${esc(names.length > 80 ? names.slice(0, 80) + "…" : names)}</option>`;
+        }).join("");
+        optSel.value = opts.includes(prev) ? prev : "";
+      };
+      const syncOpk = () => {
+        const g = grp.value, o = optSel.value;
+        $("ed-opkrow").hidden = !(g && o); if (!(g && o)) return;
+        const size = bundleMembers(g, o).length + 1;
+        opk.max = size;
+        if (opk.dataset.o !== o) { opk.value = optPickOf(p, g, o, size); opk.dataset.o = o; }
+        const k = Math.min(Math.max(1, parseInt(opk.value, 10) || 1), size);
+        $("ed-opknote").textContent = k < size ? `phương án có ${size} môn → chọn ${k} trong ${size}` : `phương án có ${size} môn → học cả ${size} môn`;
+      };
+      buildOpts(); syncOpk();
       const sync = () => {
         d.name = name.value; d.tag = tag.value.trim(); d.lt = Math.max(0, parseInt(lt.value, 10) || 0); d.th = Math.max(0, parseInt(th.value, 10) || 0); d.noCredit = nc.checked;
         if (grp.value) d.group = grp.value; else delete d.group;
-        if (d.group !== card.group) delete d.opt; else if (card.opt) d.opt = card.opt;
+        if (d.group && optSel.value) d.opt = optSel.value; else delete d.opt;
         const pv = $("ed-prev"); pv.style.setProperty("--c", d.color);
         if (d.group) pv.style.setProperty("--g", p.groups[d.group].color);
         pv.innerHTML = cardInner(d, p);
@@ -797,7 +852,9 @@ body.linking .card { cursor: pointer; }
         $("ed-swname").textContent = hit ? hit.name : "Màu tuỳ chọn";
       };
       [name, tag, lt, th, nc, grp].forEach(x => x.addEventListener("input", sync));
-      grp.addEventListener("change", sync);
+      grp.addEventListener("change", () => { buildOpts(); syncOpk(); sync(); });
+      optSel.addEventListener("change", () => { syncOpk(); sync(); });
+      opk.addEventListener("input", syncOpk);
       const pick = $("ed-pick");
       const syncPick = () => {
         const g = grp.value, row = $("ed-pickrow");
@@ -815,18 +872,25 @@ body.linking .card { cursor: pointer; }
         sync();
         const g = grp.value;
         const pk = g ? Math.min(Math.max(1, parseInt(pick.value, 10) || 1), Math.max(1, Object.keys(gOptions(p, g)).length)) : 0;
-        onSave(d, g, pk); closeModal();
+        const o = g ? optSel.value : "";
+        const ok = o ? Math.min(Math.max(1, parseInt(opk.value, 10) || 1), bundleMembers(g, o).length + 1) : 0;
+        onSave(d, g, pk, o, ok); closeModal();
       };
       name.addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) $("ed-save").click(); });
       if (extra) { $("ed-del").onclick = () => { extra.del(); closeModal(); }; $("ed-dup").onclick = () => { sync(); extra.dup(d); closeModal(); }; }
     });
   }
 
+  function setPicks(g, pk, o, ok) {
+    const G = g && page().groups[g]; if (!G) return;
+    if (pk) G.pick = pk;
+    if (o && ok) { G.optPick = G.optPick || {}; G.optPick[o] = ok; }
+  }
   function openCard(loc) {
     const c = getAt(loc); if (!c) return;
-    editor(c, "Sửa môn học", (d, g, pk) => {
+    editor(c, "Sửa môn học", (d, g, pk, o, ok) => {
       snap(); Object.keys(c).forEach(k => delete c[k]); Object.assign(c, d);
-      if (g && page().groups[g] && pk) page().groups[g].pick = pk;
+      setPicks(g, pk, o, ok);
       commit();
     }, {
       del: () => { snap(); removeAt(loc); commit(); toast("Đã xoá môn. Bấm Hoàn tác nếu nhầm."); },
@@ -839,10 +903,10 @@ body.linking .card { cursor: pointer; }
   }
   function newCard(loc) {
     const c = { id: uid(), name: "", lt: 3, th: 0, color: paint || COLORS[0].v, tag: "", noCredit: false };
-    editor(c, "Thêm môn mới", (d, g, pk) => {
+    editor(c, "Thêm môn mới", (d, g, pk, o, ok) => {
       if (!String(d.name).trim()) d.name = "Môn mới";
       snap(); putAt(loc, { ...d, id: uid() });
-      if (g && page().groups[g] && pk) page().groups[g].pick = pk;
+      setPicks(g, pk, o, ok);
       commit();
       if (loc.type === "pool") toast("Đã thêm vào khay môn học. Kéo lên sơ đồ để xếp.");
     });
