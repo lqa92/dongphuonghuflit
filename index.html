@@ -156,9 +156,12 @@ select:disabled, input:disabled { opacity: .6; }
 .dates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .btnrow { display: flex; flex-wrap: wrap; gap: 8px; }
 .cat { margin: 0; padding: 0; list-style: none; border: 1px solid var(--line); border-radius: 10px; max-height: 320px; overflow-y: auto; }
-.cat li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 12px; border-bottom: 1px solid var(--line); font-size: 14px; }
+.cat li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 12px; border-bottom: 1px solid var(--line); font-size: 14px; }
 .cat li:last-child { border-bottom: 0; }
 .cat .t { font-family: var(--font-num); white-space: nowrap; color: var(--muted); }
+.cat .cn { min-width: 0; overflow-wrap: anywhere; display: flex; flex-direction: column; }
+.cat .co { font-size: 12px; color: var(--muted); }
+.cat .cr { display: flex; align-items: center; gap: 10px; flex: none; }
 details.dp > summary { cursor: pointer; font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px; min-height: 36px; }
 details.dp[open] > summary { margin-bottom: 8px; }
 .note { font-size: 13px; color: var(--muted); padding: 10px 12px; background: var(--surface-2); border-radius: 8px; margin: 0; }
@@ -218,6 +221,7 @@ select, input[type="number"], input[type="text"], input[type="date"], input[type
 .btn { border-radius:0; background:#0d0d0d; border-color:#0d0d0d; color:#fff; text-transform:uppercase; letter-spacing:.04em; font-weight:700; }
 .btn:hover:not(:disabled) { background:#ff5a2b; border-color:#ff5a2b; color:#0d0d0d; }
 .btn.ghost { background:transparent; color:#0d0d0d; }
+.btn.danger { color:#c02a00; border-color:#c02a00; }
 .linkbtn { color:#d93a0c; }
 .hello, .note, .calc { border-radius:0; background:#f3f3f1; }
 .mine, .cat { border-radius:0; border:1.5px solid #0d0d0d; }
@@ -297,7 +301,7 @@ body { padding:0; }
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import { getFirestore, collection, doc, onSnapshot, addDoc, setDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { getFirestore, collection, doc, onSnapshot, addDoc, setDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDXB8Bak4bTCLsZbVGmxbdAOiYfFMXxdOw",
@@ -348,12 +352,17 @@ const db = getFirestore(app);
   /* Danh mục môn từ file của khoa: [bộ môn, tên môn, [số tín chỉ có thể chọn]] */
   var RAW = [["han", "Đọc tiếng Hàn 1", [2, 3]], ["han", "Nghe tiếng Hàn 1", [2, 3]], ["han", "Nói tiếng Hàn 1", [2, 3]], ["han", "Viết tiếng Hàn 1", [2, 3]], ["han", "Đọc tiếng Hàn 2", [2, 3]], ["han", "Nghe tiếng Hàn 2", [2, 3]], ["han", "Nói tiếng Hàn 2", [2, 3]], ["han", "Viết tiếng Hàn 2", [2, 3]], ["han", "Đọc tiếng Hàn 3", [2, 3]], ["han", "Nghe tiếng Hàn 3", [2, 3]], ["han", "Nói tiếng Hàn 3", [2, 3]], ["han", "Viết tiếng Hàn 3", [2, 3]], ["han", "Đọc tiếng Hàn 4", [2, 3]], ["han", "Nghe tiếng Hàn 4", [2, 3]], ["han", "Nói tiếng Hàn 4", [2, 3]], ["han", "Viết tiếng Hàn 4", [2, 3]], ["han", "Lịch sử Korea", [2, 3]], ["han", "Văn hóa Korea", [2]], ["han", "Đàm thoại văn hóa, xã hội Hàn Quốc 1", [3]], ["han", "Thực hành văn bản tiếng Hàn 1", [3]], ["han", "Nghe tiếng Hàn nâng cao", [3]], ["han", "Đọc tiếng Hàn nâng cao", [3]], ["han", "Nghe tin thời sự Hàn Quốc", [3]], ["han", "Đàm thoại văn hóa, xã hội Hàn Quốc 2", [3]], ["han", "Thực hành văn bản tiếng Hàn 2", [3]], ["han", "Văn học Korea", [2, 3]], ["han", "Kỹ năng đọc hiểu văn bản tiếng Hàn", [3]], ["han", "Tiếng Hàn thương mại", [2, 3]], ["han", "Văn hóa doanh nghiệp Hàn Quốc", [3]], ["han", "Kỹ năng thuyết trình tiếng Hàn nâng cao", [3]], ["han", "Nói tiếng Hàn nâng cao", [3]], ["han", "Viết tiếng Hàn nâng cao", [3]], ["han", "Bản tin thời sự Hàn Quốc", [3]], ["han", "Seminar chuyên ngành Hàn Quốc học", [3]], ["han", "Ứng dụng công nghệ vào soạn thảo văn bản tiếng Hàn", [3]], ["han", "Địa lý – Kinh tế Hàn Quốc", [3]], ["han", "Văn hoá – Xã hội Hàn Quốc", [3]], ["han", "Thuyết trình tiếng Hàn ứng dụng đa phương tiện", [3]], ["han", "Tổng quan ngành Ngôn ngữ Hàn Quốc", [2]], ["han", "Thực hành tiếng Hàn 1", [2]], ["han", "Thực hành tiếng Hàn 2", [2]], ["han", "Ngữ âm - âm vị học tiếng Hàn", [2, 3]], ["han", "Địa lý Hàn Quốc", [2]], ["han", "Hình thái học tiếng Hàn", [2]], ["han", "Đọc tiếng Hàn 5", [2]], ["han", "Nghe tiếng Hàn 5", [2]], ["han", "Nói tiếng Hàn 5", [2]], ["han", "Viết tiếng Hàn 5", [2]], ["han", "Biên - phiên dịch tiếng Hàn cơ bản", [2]], ["han", "Soạn thảo văn bản tiếng Hàn", [2]], ["han", "Nhập môn giảng dạy tiếng Hàn", [2, 3]], ["han", "Đọc tiếng Hàn 6", [2]], ["han", "Nghe tiếng Hàn 6", [2]], ["han", "Nói tiếng Hàn 6", [2]], ["han", "Viết tiếng Hàn 6", [2]], ["han", "Cú pháp học tiếng Hàn", [2, 3]], ["han", "Tiếng Hàn thời sự", [2]], ["han", "Phương pháp giảng dạy tiếng Hàn", [2, 3]], ["han", "Giao tiếp liên văn hóa Việt - Hàn", [2]], ["han", "Tiếng Hàn công sở", [2, 3]], ["han", "Tiếng Hàn du lịch", [2, 3]], ["han", "Đọc tiếng Hàn 7", [2]], ["han", "Nghe tiếng Hàn 7", [2]], ["han", "Nói tiếng Hàn 7", [2]], ["han", "Viết tiếng Hàn 7", [2]], ["han", "Ngữ nghĩa học tiếng Hàn", [2]], ["han", "Biên - phiên dịch tiếng Hàn nâng cao", [2]], ["han", "Thực hành giảng dạy tiếng Hàn", [2, 3]], ["han", "Thuyết minh tuyến điểm Hàn - Việt", [2]], ["han", "Kỹ năng thuyết trình tiếng Hàn", [3]], ["han", "Ứng dụng công nghệ trong dịch thuật tiếng Hàn", [3]], ["han", "Từ vựng - Ngữ nghĩa học tiếng Hàn", [3]], ["han", "Kỹ năng dịch tiếng Hàn nâng cao", [3]], ["han", "Văn hoá Xã hội Hàn Quốc", [3]], ["han", "Biên phiên dịch chuyên ngành", [3]], ["han", "Thuyết minh tuyến điểm Việt - Hàn", [3]], ["han", "E-learning trong giảng dạy tiếng Hàn", [3]], ["han", "Tiếng Hàn 1", [3]], ["han", "Tiếng Hàn 2", [3]], ["han", "Tiếng Hàn 3", [3]], ["han", "Tiếng Hàn 4", [3]], ["nhat", "Tiếng Nhật 1", [3]], ["nhat", "Tiếng Nhật 2", [3]], ["nhat", "Tiếng Nhật 3", [3]], ["nhat", "Nghe tiếng Nhật 1", [3]], ["nhat", "Nghe tiếng Nhật 2", [3]], ["nhat", "Nghe tiếng Nhật 3", [3]], ["nhat", "Nghe tiếng Nhật 4", [3]], ["nhat", "Nghe tiếng Nhật nâng cao", [3]], ["nhat", "Nói tiếng Nhật 1", [3]], ["nhat", "Nói tiếng Nhật 2", [3]], ["nhat", "Nói tiếng Nhật 3", [3]], ["nhat", "Nói tiếng Nhật 4", [3]], ["nhat", "Nói tiếng Nhật nâng cao", [3]], ["nhat", "Đọc tiếng Nhật 1", [3]], ["nhat", "Đọc tiếng Nhật 2", [3]], ["nhat", "Đọc tiếng Nhật 3", [3]], ["nhat", "Đọc tiếng Nhật 4", [3]], ["nhat", "Đọc tiếng Nhật nâng cao", [3]], ["nhat", "Viết tiếng Nhật 1", [3]], ["nhat", "Viết tiếng Nhật 2", [3]], ["nhat", "Viết tiếng Nhật 3", [3]], ["nhat", "Viết tiếng Nhật 4", [3]], ["nhat", "Viết tiếng Nhật nâng cao", [3]], ["nhat", "Bản tin thời sự Nhật Bản", [3]], ["nhat", "Seminar chuyên ngành Nhật Bản học", [3]], ["nhat", "Ứng dụng công nghệ vào soạn thảo văn bản tiếng Nhật", [3]], ["nhat", "Địa lý – Kinh tế Nhật Bản", [3]], ["nhat", "Lịch sử Nhật Bản", [2, 3]], ["nhat", "Văn hoá – Xã hội Nhật Bản", [2, 3]], ["nhat", "Văn học Nhật Bản", [2, 3]], ["nhat", "Văn hoá doanh nghiệp Nhật Bản", [3]], ["nhat", "Thuyết trình tiếng Nhật ứng dụng đa phương tiện", [3]], ["nhat", "Nghe tin thời sự Nhật Bản", [3]], ["nhat", "Đàm thoại văn hóa, xã hội Nhật Bản 1", [3]], ["nhat", "Đàm thoại văn hóa, xã hội Nhật Bản 2", [3]], ["nhat", "Kỹ năng đọc hiểu văn bản tiếng Nhật", [3]], ["nhat", "Thực hành văn bản tiếng Nhật 1", [3]], ["nhat", "Thực hành văn bản tiếng Nhật 2", [3]], ["nhat", "Tiếng Nhật thương mại", [3]], ["nhat", "Kỹ năng thuyết trình tiếng Nhật", [3]], ["viet", "Tổng quan ngành Đông phương học", [2]], ["viet", "Cơ sở văn hóa Việt Nam", [2, 3]], ["viet", "Lịch sử văn minh phương Đông", [2, 3]], ["viet", "Phương pháp luận sáng tạo", [2, 3]], ["viet", "Dẫn luận ngôn ngữ học", [2]], ["viet", "Phương pháp nghiên cứu khoa học", [2, 3]], ["viet", "Tâm lý học đại cương", [2, 3]], ["viet", "Văn hóa tổ chức", [2]], ["viet", "Luật lao động", [2, 3]], ["viet", "Nghiệp vụ quản trị văn phòng và thư ký", [2, 3]], ["viet", "Nghiệp vụ hướng dẫn – tâm lý du lịch", [2, 3]], ["viet", "Tổng quan du lịch", [2]], ["viet", "Địa lý và dân cư ở Đông Á", [2]], ["viet", "Nghệ thuật truyền thống Phương Đông", [2]], ["viet", "Các tổ chức quốc tế & khu vực ở phương Đông", [2]], ["viet", "Xã hội ở các nước Đông Á", [2]], ["viet", "Hệ thống chính trị và pháp luật các nước phương Đông", [2]], ["viet", "Nghiệp vụ PR", [2]], ["viet", "Quản trị nguồn nhân lực", [2]], ["viet", "Nghiệp vụ tổ chức hội nghị, hội họp", [2]], ["viet", "Các vấn đề về dân tộc học và tôn giáo", [2]], ["viet", "Lược sử kiến trúc Mỹ thuật Việt Nam", [2]], ["viet", "Hệ thống tuyến điểm du lịch & luật du lịch", [2]], ["viet", "Cơ sở ngôn ngữ học và tiếng Việt", [3]], ["viet", "Hán tự tổng hợp", [3]], ["viet", "Logic học ứng dụng và tiếng Việt", [3]], ["viet", "Tổng quan du lịch và Luật du lịch", [3]], ["viet", "Nghiệp vụ PR và tổ chức sự kiện", [3]], ["viet", "Hệ thống tuyến điểm du lịch", [3]], ["viet", "Nghiệp vụ hướng dẫn tâm lý du lịch", [2]], ["viet", "Digital Marketing", [3]],["nhat","Nghe tiếng Nhật 5",[3]],["nhat","Nói tiếng Nhật 5",[3]],["nhat","Đọc – Hán tự tiếng Nhật 5",[3]],["nhat","Viết tiếng Nhật 5",[3]],["nhat","Kỹ năng nghe – ghi chú tiếng Nhật",[3]],["nhat","Kỹ năng đọc văn bản tiếng Nhật",[3]],["nhat","Kỹ năng dịch nói tiếng Nhật",[3]],["nhat","Kỹ năng dịch viết tiếng Nhật",[3]],["nhat","Ngữ âm – Âm vị học tiếng Nhật",[3]],["nhat","Từ vựng – Ngữ nghĩa học tiếng Nhật",[3]],["nhat","Cú pháp học tiếng Nhật",[3]],["nhat","Thư tín thương mại tiếng Nhật",[3]],["nhat","Đàm thoại thương mại tiếng Nhật",[3]],["nhat","Biên dịch tiếng Nhật thương mại kết hợp công nghệ",[3]],["nhat","Nhập môn giảng dạy tiếng Nhật",[2,3]],["nhat","Phương pháp giảng dạy tiếng Nhật",[2,3]],["nhat","Thực hành giảng dạy tiếng Nhật",[3]],["nhat","Tích hợp công nghệ trong giảng dạy tiếng Nhật",[3]],["nhat","Tâm lý học trong giảng dạy tiếng Nhật",[2,3]],["nhat","Văn hóa ứng xử trong giao tiếp tiếng Nhật",[2,3]],["nhat","Tiếng Nhật du lịch",[3]]];
   var base = RAW.map(function (r, i) { return { id: 'c' + i, dept: r[0], name: r[1], cr: r[2] }; });
-  var courses = [], courseMap = {};
+  /* courses = các môn đang hiện trong danh mục; courseMap giữ cả môn đã xóa để các lớp đã nhập trước đó vẫn hiện đúng tên */
+  var courses = [], courseMap = {}, hiddenCourses = [];
   var cById = function (id) { return courseMap[id]; };
+  var hiddenIds = function () { var c = SEM['catalog']; return c && Array.isArray(c.hidden) ? c.hidden : []; };
   function rebuildCourses() {
-    courses = base.concat(X.map(function (x) { return { id: x.id, dept: x.dept, name: x.name, cr: x.cr }; }));
-    courses.sort(function (a, b) { return a.name.localeCompare(b.name, 'vi', { sensitivity: 'base', numeric: true }); });
-    courseMap = {}; courses.forEach(function (c) { courseMap[c.id] = c; });
+    var hid = hiddenIds();
+    var all = base.concat(X.map(function (x) { return { id: x.id, dept: x.dept, name: x.name, cr: x.cr }; }));
+    all.sort(function (a, b) { return a.name.localeCompare(b.name, 'vi', { sensitivity: 'base', numeric: true }); });
+    courseMap = {}; all.forEach(function (c) { courseMap[c.id] = c; });
+    courses = all.filter(function (c) { return hid.indexOf(c.id) < 0; });
+    hiddenCourses = all.filter(function (c) { return hid.indexOf(c.id) >= 0; });
   }
   var PER_CR = 15; /* 2 tín chỉ = 30 tiết, 3 tín chỉ = 45 tiết */
   var YEARS = ['2026–2027'];
@@ -381,7 +390,7 @@ const db = getFirestore(app);
   var MANAGERS = MANAGER_NAMES.map(function (n) { return slug(n); });
   var personOf = function (id) { return people().filter(function (p) { return p.id === id; })[0]; };
 
-  var S = { year: '2026–2027', hk: 1, dept: 'all', tab: 'enter', open: {}, err: '', dbErr: '',
+  var S = { year: '2026–2027', hk: 1, dept: 'all', tab: 'enter', open: {}, catOpen: {}, err: '', dbErr: '',
     key: null, isAdmin: false, canExcel: false, isManager: false, signedIn: false, authReady: false, teachersLoaded: false,
     au: { mode: 'login', slug: '', email: '', pw: '', pw2: '', dept: 'han', guest: false, err: '', info: '', busy: false },
     d: { q: '', c: '', cr: 3, nl: 1, p: 100 }, view: 'all', target: '' };
@@ -633,11 +642,25 @@ const db = getFirestore(app);
   /* ---------- Quản trị ---------- */
   function renderAdmin() {
     var st = statusOf();
+    var usedN = function (cid) { return A.filter(function (a) { return a.c === cid; }).length; };
+    var catItem = function (c, restore) {
+      var n = usedN(c.id), cf = S.confirm === 'c:' + c.id;
+      var btn = restore
+        ? '<button class="btn ghost small" type="button" data-act="restorecourse" data-id="' + esc(c.id) + '">Khôi phục</button>'
+        : '<button class="btn ghost small' + (cf ? ' danger' : '') + '" type="button" data-act="delcourse" data-id="' + esc(c.id) + '">' + (cf ? 'Bấm lần nữa để xóa' : 'Xóa') + '</button>';
+      return '<li><span class="cn"><span>' + esc(c.name) + '</span>' + (n ? '<span class="co">Đã có ' + n + ' lớp nhập môn này</span>' : '') + '</span>' +
+        '<span class="cr"><span class="t">' + c.cr.join(' / ') + ' TC</span>' + btn + '</span></li>';
+    };
     var cat = DEPTS.map(function (d) {
       var cs = courses.filter(function (c) { return c.dept === d.id; });
-      return '<details class="dp"><summary><i class="dot" style="background:var(--' + d.id + ')"></i>' + d.name + ' (' + cs.length + ' môn)</summary><ul class="cat">' +
-        cs.map(function (c) { return '<li><span>' + esc(c.name) + '</span><span class="t">' + c.cr.join(' / ') + ' TC</span></li>'; }).join('') + '</ul></details>';
+      return '<details class="dp" data-dp="' + d.id + '"' + (S.catOpen[d.id] ? ' open' : '') + '><summary><i class="dot" style="background:var(--' + d.id + ')"></i>' + d.name + ' (' + cs.length + ' môn)</summary>' +
+        (cs.length ? '<ul class="cat">' + cs.map(function (c) { return catItem(c, false); }).join('') + '</ul>' : '<p class="hint">Chưa có môn nào.</p>') + '</details>';
     }).join('');
+    if (hiddenCourses.length) {
+      cat += '<details class="dp" data-dp="hidden"' + (S.catOpen.hidden ? ' open' : '') + '><summary>Môn đã xóa (' + hiddenCourses.length + ' môn)</summary>' +
+        '<ul class="cat">' + hiddenCourses.map(function (c) { return catItem(c, true); }).join('') + '</ul></details>';
+    }
+    cat += '<p class="hint">Môn đã xóa không còn hiện để thầy cô chọn khi nhập. Các lớp đã nhập môn đó trước đây vẫn giữ nguyên tên môn và số tiết. Bấm "Khôi phục" nếu xóa nhầm.</p>';
     var deptOpts = DEPTS.map(function (d) { return '<option value="' + d.id + '">' + d.name + '</option>'; }).join('');
     var pl = people().sort(function (a, b) { return a.name.localeCompare(b.name, 'vi'); });
     var peopleHtml = pl.length ? '<ul class="cat">' + pl.map(function (p) {
@@ -805,6 +828,11 @@ const db = getFirestore(app);
   function toast(m) { var s = document.createElement('div'); s.className = 'toast'; s.textContent = m; document.body.appendChild(s); setTimeout(function () { s.remove(); }, 4000); }
 
   var main = $('#main');
+  /* Nhớ nhóm nào trong Danh mục đang mở, để bấm Xóa xong không bị đóng lại */
+  main.addEventListener('toggle', function (e) {
+    var el = e.target;
+    if (el.matches && el.matches('details[data-dp]')) S.catOpen[el.getAttribute('data-dp')] = el.open;
+  }, true);
   main.addEventListener('click', async function (e) {
     var el = e.target.closest('[data-act]'); if (!el) return;
     var act = el.getAttribute('data-act'), id = el.getAttribute('data-id');
@@ -826,6 +854,20 @@ const db = getFirestore(app);
         if (S.confirm !== id) { S.confirm = id; render(); }
         else { S.confirm = null; await updateDoc(doc(db, 'teachers', id), { gen: ((T[id] && T[id].gen) || 0) + 1, pw: false }); }
       }
+      else if (act === 'delcourse') {
+        if (!S.isAdmin) return;
+        if (S.confirm !== 'c:' + id) { S.confirm = 'c:' + id; render(); }
+        else {
+          S.confirm = null;
+          await setDoc(doc(db, 'sems', 'catalog'), { hidden: arrayUnion(id) }, { merge: true });
+          toast('Đã xóa môn khỏi danh mục.');
+        }
+      }
+      else if (act === 'restorecourse') {
+        if (!S.isAdmin) return;
+        await setDoc(doc(db, 'sems', 'catalog'), { hidden: arrayRemove(id) }, { merge: true });
+        toast('Đã khôi phục môn vào danh mục.');
+      }
       else if (act === 'delname') { await deleteDoc(doc(db, 'roster', id)); }
       else if (act === 'del') {
         if (statusOf() !== 'open' && !adminEdit()) return;
@@ -834,7 +876,7 @@ const db = getFirestore(app);
       else if (act === 'force') {
         await setDoc(doc(db, 'sems', 'global'), { force: el.getAttribute('data-v') });
       }
-    } catch (err) { toast(authMsg(err)); }
+    } catch (err) { S.confirm = null; toast(authMsg(err)); }
   });
 
   main.addEventListener('input', function (e) {
